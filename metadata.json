@@ -1,6 +1,6 @@
 {
   "name": "Love Note",
-  "description": "A beautiful, personal love note.",
+  "description": "Love Note 4.0 - Project-centric creative ecosystem with AI Coach, Smart Checklists, and Lifecycle Management.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

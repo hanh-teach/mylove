@@ -1,0 +1,17 @@
+export const RegressionChecklist = [
+  'Tạo Project',
+  'Mở Project',
+  'Save',
+  'Undo',
+  'Redo',
+  'AI Writing',
+  'Timeline',
+  'Memory',
+  'Assets',
+  'Template',
+  'Export PDF',
+  'Print',
+  'Version History',
+  'Search',
+  'Navigation',
+];

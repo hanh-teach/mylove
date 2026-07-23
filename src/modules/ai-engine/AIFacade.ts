@@ -9,8 +9,39 @@ import { GuardrailRequestContext } from './guardrails/GuardrailTypes';
 import { resultService } from './services/ResultService';
 import { AIRequestOptions, AIResponse } from './types';
 import { NormalizedResult } from './services/ResponseNormalizer';
+import { workflowPlanner, PlanningContext, PlanningResult } from './creative-workflow/WorkflowPlanner';
+import { workflowOrchestrator, WorkflowExecutionResult } from './creative-workflow/WorkflowOrchestrator';
+import { TaskExecutionProgress } from './creative-workflow/TaskExecutor';
+import { DecisionEngine } from './reasoning/DecisionEngine';
+import { GoalAnalyzer } from './reasoning/GoalAnalyzer';
+import { AIKernel } from './aios/AIKernel';
+import { AIControlPlane } from './aios/AIControlPlane';
+import { ProviderFederation } from './providers/ProviderFederation';
 
 export class AIFacade {
+  constructor() {
+    AIKernel.boot().catch(console.error);
+  }
+
+  /**
+   * Generates a multi-step execution plan DAG from high-level user goal.
+   */
+  public async planGoal(goal: string, context?: PlanningContext): Promise<PlanningResult> {
+    await AIControlPlane.dispatch(goal);
+    return await workflowPlanner.plan(goal, context);
+  }
+
+  /**
+   * Plans and executes a multi-step goal using the Planning Engine and DAG Orchestrator.
+   */
+  public async executePlan(
+    goal: string, 
+    context?: PlanningContext,
+    onProgress?: (progress: TaskExecutionProgress) => void
+  ): Promise<WorkflowExecutionResult> {
+    return await workflowOrchestrator.planAndExecuteGoal(goal, context, onProgress);
+  }
+
   /**
    * Phương thức chính để yêu cầu AI thực hiện một tác vụ đơn lẻ.
    */
@@ -22,11 +53,19 @@ export class AIFacade {
     userId?: string
   ): Promise<AIResponse> {
     
+    // 0. Reasoning Engine: Analyze Intent & Goal even for single requests
+    const analysis = GoalAnalyzer.analyze({ text: query, userId });
+    console.log(`[AIFacade] Reasoning Single Task Intent: ${analysis.intent}, Emotion: ${analysis.emotion}`);
+
     // 1. Context Engine: Lấy ngữ cảnh dự án
     const context = await contextEngine.getProjectContext(projectId);
 
     // 2. Prompt Engine: Compile prompt từ template
-    const builtPrompt = promptEngine.compile(templateId, { context, query });
+    const builtPrompt = promptEngine.compile(templateId, { 
+      context, 
+      query, 
+      analysis: JSON.stringify(analysis) 
+    });
 
     // 2.5 Guardrail Check
     const traceId = Math.random().toString(36).substr(2, 9);
@@ -42,6 +81,9 @@ export class AIFacade {
       throw new Error('Request blocked by guardrails: ' + guardrailResult.violations.join(', '));
     }
     const finalPrompt = guardrailResult.sanitizedPrompt || builtPrompt.full;
+
+    // 2.7 Provider Federation: Select best provider
+    await ProviderFederation.execute({ goal: query, options });
 
     // 3. Cache Check
     const cacheKey = aiCache.generateKey(templateId + finalPrompt, options);

@@ -1,22 +1,35 @@
-export type AssetType = 'image' | 'video' | 'sticker' | 'font' | 'music' | 'voice' | 'animation' | 'background';
+export type AssetCategory = 'image' | 'video' | 'audio' | 'document' | 'ai' | 'icon' | 'background' | 'template';
 
-export interface AssetMetadata {
-  duration?: number; // for audio/video
-  mimeType?: string;
-  fontFamily?: string;
-  [key: string]: any;
-}
+export type AssetStatus = 'active' | 'trash';
 
-export interface Asset {
+// Backward compatibility aliases
+export type AssetType = AssetCategory | 'sticker' | 'font' | 'music' | 'voice' | 'animation';
+
+export interface ProjectAsset {
   id: string;
-  type: AssetType;
+  projectId: string;
+  title: string;
   url: string;
-  size: number;
+  type: AssetType;
+  size: number; // in bytes
   width?: number;
   height?: number;
-  provider: 'local' | 'system' | 'external';
-  hash: string;
-  metadata: AssetMetadata;
+  duration?: number; // in seconds
   createdAt: number;
-  usedBy: string[]; // List of Layer/Scene IDs using this asset
+  updatedAt: number;
+  favorite: boolean;
+  tags: string[];
+  aiGenerated: boolean;
+  provider: 'local' | 'system' | 'external' | 'gemini' | 'ai-studio';
+  version: number;
+  status: AssetStatus;
+  description?: string;
+  mimeType?: string;
+  hash?: string;
+  usedBy?: string[];
+  collections?: string[];
+  projectsUsed?: string[];
+  metadata?: Record<string, any>;
 }
+
+export interface Asset extends ProjectAsset {}

@@ -8,6 +8,45 @@
   --font-lora: "Lora", serif;
   --font-nunito: "Nunito", sans-serif;
   --font-playfair: "Playfair Display", serif;
+
+  /* Color Tokens */
+  --color-primary: var(--color-rose-600);
+  --color-primary-hover: var(--color-rose-700);
+  --color-primary-active: var(--color-rose-800);
+  --color-surface: var(--color-white);
+  --color-surface-elevated: var(--color-slate-50);
+  --color-border-subtle: var(--color-slate-100);
+  --color-border-base: var(--color-slate-200);
+  --color-border-strong: var(--color-slate-300);
+  --color-text-main: var(--color-slate-900);
+  --color-text-muted: var(--color-slate-500);
+  --color-text-inverse: var(--color-white);
+
+  /* Radius Tokens */
+  --radius-xs: 4px;
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  --radius-2xl: 32px;
+
+  /* Spacing Tokens (Extending Tailwind default 4px scale) */
+  --spacing-safe-top: env(safe-area-inset-top);
+  --spacing-safe-bottom: env(safe-area-inset-bottom);
+
+  /* Elevation / Shadows */
+  --shadow-level-0: none;
+  --shadow-level-1: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-level-2: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-level-3: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+
+  /* Unified Transitions */
+  --duration-fast: 180ms;
+  --duration-base: 250ms;
+  --duration-slow: 400ms;
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
 }
 
 @layer utilities {

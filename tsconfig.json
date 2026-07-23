@@ -24,6 +24,8 @@
     "noEmit": true
   },
   "exclude": [
+    "dist",
+    "node_modules",
     "test-*.ts",
     "test-runway.js",
     "test.js"

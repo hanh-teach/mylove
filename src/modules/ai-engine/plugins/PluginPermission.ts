@@ -1,0 +1,1 @@
+export type PluginPermission = 'knowledge.read' | 'knowledge.write' | 'video.generate' | 'image.generate' | 'filesystem.read' | 'filesystem.write' | 'notification.send' | 'runtime.execute' | 'memory.read' | 'memory.write';

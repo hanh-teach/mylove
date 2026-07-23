@@ -11,7 +11,7 @@ const birdsImg = undefined;
 
 export const fontRegistry: Record<FontStyleType, { label: string; class: string }> = {
   playfair: { label: 'Sang trọng', class: 'font-playfair' },
-  dancing: { label: 'Lãng mạn', class: 'font-dancing' },
+  dancing: { label: 'Nghệ thuật', class: 'font-dancing' },
   pacifico: { label: 'Dễ thương', class: 'font-pacifico' },
   caveat: { label: 'Viết tay', class: 'font-caveat' },
   lora: { label: 'Cổ điển', class: 'font-lora' },
@@ -20,12 +20,12 @@ export const fontRegistry: Record<FontStyleType, { label: string; class: string 
 
 export const musicTracks = [
   { id: 'none', label: 'Tắt nhạc', icon: VolumeX, url: '' },
-  { id: 'romantic', label: 'Tình yêu', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
+  { id: 'romantic', label: 'Ấm áp', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
   { id: 'birthday', label: 'Sinh nhật', icon: Gift, url: 'https://archive.org/download/HappyBirthdayInstrumentalPianoViaInstrumentals.com.ng/Happy%20Birthday%20Instrumental%20Piano%20via%20instrumentals.com.ng.mp3' },
   { id: 'lofi', label: 'Nhẹ nhàng', icon: Coffee, url: 'https://archive.org/download/lofi-study/lofi-study.mp3' },
   { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/acoustic-vlog-music-chasing-the-breeze/Acoustic%20Vlog%20Music%20-%20Chasing%20the%20Breeze%20-%20by%20BMNC.mp3' },
   { id: 'ai-magic', label: 'Giai điệu diệu kỳ', icon: Sparkles, url: 'https://archive.org/download/cosmic_dharma_magic_forest_zen_garden/magic_forest.mp3' },
-  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
+  { id: 'ai-piano', label: 'Piano thư giãn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
 ];
 
 export const decorRegistry: Record<DecorType, { type: 'icon' | 'image', content: any }> = {

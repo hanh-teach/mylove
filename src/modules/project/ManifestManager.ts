@@ -18,7 +18,7 @@ export class ManifestManager {
     // Lấy danh sách asset được sử dụng bởi các scene này
     const allAssets = assetStore.getAssets();
     const projectAssets = allAssets.filter(asset => 
-      asset.usedBy.some(entityId => 
+      asset.usedBy && asset.usedBy.some(entityId => 
         entityId === projectId || scenes.some(s => s.id === entityId)
       )
     );

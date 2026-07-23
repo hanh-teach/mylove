@@ -4,9 +4,31 @@
  */
 
 import React, { useState, useRef, useEffect, ComponentType } from 'react';
-import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film } from 'lucide-react';
+import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
+import { AISidebar } from './components/ai/AISidebar';
+import { StudioEditor } from './components/editor/StudioEditor';
+import { MemoryDashboard } from './components/memory/MemoryDashboard';
+import { RelationshipTimelineView } from './components/timeline/RelationshipTimelineView';
+import { PeopleView } from './components/entities/PeopleView';
+import { PlacesView } from './components/entities/PlacesView';
+import { GraphView } from './components/relationship/GraphView';
+import { RelatedContentPanel } from './components/relationship/RelatedContentPanel';
+import { EntityType } from './modules/relationship/types';
+import { AIStudioDashboard } from './components/ai-studio/AIStudioDashboard';
+import { MediaLibraryPanel } from './components/asset/MediaLibraryPanel';
+import { KnowledgeDashboard } from './components/knowledge/KnowledgeDashboard';
+import { AutomationDashboard } from './components/automation/AutomationDashboard';
+import { CommandCenter } from './components/automation/CommandCenter';
+import { ApplicationShell } from './app/AppShell/ApplicationShell';
+import { AppTabType } from './types';
+import { UniversalSearchOverlay } from './components/search/UniversalSearchOverlay';
+import { WorkspaceDashboard, ProjectWorkspaceProvider, useProjectWorkspace } from './modules/workspace';
+import { ProjectDashboard } from './components/workspace/ProjectDashboard';
+import { ProjectSidebar } from './components/workspace/ProjectSidebar';
+import { ProjectCommandCenter } from './components/workspace/ProjectCommandCenter';
+import { DesignSystemPlayground } from './modules/debug/DesignSystemPlayground';
 
 import coupleImg from './assets/images/couple_romantic_icon_1783908155583.jpg';
 import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg';
@@ -101,7 +123,7 @@ type DecorType = 'Heart' | 'Star' | 'Smile' | 'Gift' | 'Sparkles' | 'Cake' | 'Us
 
 const fontRegistry: Record<FontStyleType, { label: string; class: string }> = {
   playfair: { label: 'Sang trọng', class: 'font-playfair' },
-  dancing: { label: 'Lãng mạn', class: 'font-dancing' },
+  dancing: { label: 'Nghệ thuật', class: 'font-dancing' },
   pacifico: { label: 'Dễ thương', class: 'font-pacifico' },
   caveat: { label: 'Viết tay', class: 'font-caveat' },
   lora: { label: 'Cổ điển', class: 'font-lora' },
@@ -110,12 +132,12 @@ const fontRegistry: Record<FontStyleType, { label: string; class: string }> = {
 
 const musicTracks = [
   { id: 'none', label: 'Tắt nhạc', icon: VolumeX, url: '' },
-  { id: 'romantic', label: 'Tình yêu', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
+  { id: 'romantic', label: 'Ấm áp', icon: Heart, url: 'https://archive.org/download/LaCordaDoro-CanonInDMajor/05Pachelbel-CanonInDMajor.mp3' },
   { id: 'birthday', label: 'Sinh nhật', icon: Gift, url: 'https://archive.org/download/HappyBirthdayInstrumentalPianoViaInstrumentals.com.ng/Happy%20Birthday%20Instrumental%20Piano%20via%20instrumentals.com.ng.mp3' },
   { id: 'lofi', label: 'Nhẹ nhàng', icon: Coffee, url: 'https://archive.org/download/lofi-study/lofi-study.mp3' },
   { id: 'acoustic', label: 'Mộc mạc', icon: TreePine, url: 'https://archive.org/download/acoustic-vlog-music-chasing-the-breeze/Acoustic%20Vlog%20Music%20-%20Chasing%20the%20Breeze%20-%20by%20BMNC.mp3' },
   { id: 'ai-magic', label: 'Giai điệu diệu kỳ', icon: Sparkles, url: 'https://archive.org/download/cosmic_dharma_magic_forest_zen_garden/magic_forest.mp3' },
-  { id: 'ai-piano', label: 'Piano lãng mạn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
+  { id: 'ai-piano', label: 'Piano thư giãn', icon: Music, url: 'https://archive.org/download/elfen-lied-op-lilium-piano-solo/Elfen%20Lied%20OP%20-%20Lilium%20%28Piano%20Solo%29.mp3' }
 ];
 
 const decorRegistry: Record<DecorType, { type: 'icon' | 'image', content: ComponentType<any> | string }> = {
@@ -156,7 +178,9 @@ const textColors = [
   { id: 'white', label: 'Trắng', textClass: 'text-white', secondaryClass: 'text-white/90' },
 ];
 
-export default function App() {
+function AppContent() {
+  const { activeProject, updateActiveProjectContent, updateActiveProject } = useProjectWorkspace();
+
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([]);
   const [totalHeartsCount, setTotalHeartsCount] = useState(0);
   const [showDate, setShowDate] = useState(false);
@@ -177,6 +201,16 @@ export default function App() {
 
   const [decorColor, setDecorColor] = useState<string>('#f43f5e');
   const [selectedDecorId, setSelectedDecorId] = useState<number | null>(null);
+  const [showStudioEditor, setShowStudioEditor] = useState(false);
+  const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
+  const [activeAppTab, setActiveAppTab] = useState<AppTabType>(() => {
+    const saved = sessionStorage.getItem('lovenote_active_tab');
+    return (saved as AppTabType) || 'home';
+  });
+
+  useEffect(() => {
+    sessionStorage.setItem('lovenote_active_tab', activeAppTab);
+  }, [activeAppTab]);
 
   const [isVideoModalOpen, setIsVideoModalOpen] = useState(false);
   const [isVideoGenerating, setIsVideoGenerating] = useState(false);
@@ -184,6 +218,68 @@ export default function App() {
   const [generatedVideoUrl, setGeneratedVideoUrl] = useState<string | null>(null);
   const [videoGenResult, setVideoGenResult] = useState<any>(null);
   const [isExportingImage, setIsExportingImage] = useState(false);
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Global event listeners for Command Palette and settings trigger
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+      
+      // Command Palette (Ctrl+K)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        if (activeProject) {
+          setIsCommandCenterOpen(prev => !prev);
+        } else {
+          setIsCommandPaletteOpen(prev => !prev);
+        }
+      }
+      
+      // Numeric tab shortcuts (Cmd/Ctrl + 1-8)
+      if ((e.ctrlKey || e.metaKey) && !isNaN(parseInt(e.key))) {
+        const num = parseInt(e.key);
+        const tabs: AppTabType[] = ['home', 'editor', 'memory', 'timeline', 'aistudio', 'assets', 'design-system', 'card'];
+        if (num >= 1 && num <= tabs.length) {
+          e.preventDefault();
+          setActiveAppTab(tabs[num - 1]);
+        }
+      }
+    };
+    const handleOpenEvent = () => setIsCommandPaletteOpen(true);
+    const handleCloseEvent = () => setIsCommandPaletteOpen(false);
+    const handleTriggerSettings = () => {
+      setShowSettingsMenu(true);
+      setActiveAppTab('card');
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('open-command-palette', handleOpenEvent);
+    window.addEventListener('close-command-palette', handleCloseEvent);
+    window.addEventListener('trigger-settings', handleTriggerSettings);
+    
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('open-command-palette', handleOpenEvent);
+      window.removeEventListener('close-command-palette', handleCloseEvent);
+      window.removeEventListener('trigger-settings', handleTriggerSettings);
+    };
+  }, []);
+
+  // Sync active project state
+  useEffect(() => {
+    if (activeProject && activeProject.content) {
+      if (activeProject.content.title !== undefined) setTitle(activeProject.content.title);
+      if (activeProject.content.message !== undefined) setMessage(activeProject.content.message);
+      if (activeProject.content.placedItems) setPlacedItems(activeProject.content.placedItems);
+      if (activeProject.content.scene) setScene(activeProject.content.scene as SceneType);
+      if (activeProject.content.bgStyle) setBgStyle(activeProject.content.bgStyle as BgStyleType);
+      if (activeProject.content.fontStyle) setFontStyle(activeProject.content.fontStyle as FontStyleType);
+      if (activeProject.content.textColor) setTextColor(activeProject.content.textColor);
+    }
+  }, [activeProject?.id]);
 
   const getWordSpacingWidth = (font: FontStyleType) => {
     switch (font) {
@@ -486,19 +582,207 @@ export default function App() {
     setFontStyle(fonts[(currentIndex + 1) % fonts.length]);
   };
 
+  // One Click Resume - Save state
+  useEffect(() => {
+    if (activeProject && activeAppTab !== 'home') {
+      updateActiveProject({
+        lastState: {
+          tab: activeAppTab,
+          // scrollPos and zoom can be added later if needed
+        }
+      });
+    }
+  }, [activeAppTab, activeProject?.id]);
+
+  // One Click Resume - Load state
+  useEffect(() => {
+    if (activeProject && activeProject.lastState?.tab && activeAppTab === 'project-dashboard') {
+      // If we just opened the project dashboard, we could automatically redirect to last tab
+      // but the user might want to see the dashboard first.
+      // Let's make it a button on the dashboard instead or just auto-redirect if they "Open" from workspace.
+    }
+  }, [activeProject?.id]);
+
+  const [relatedPanelInfo, setRelatedPanelInfo] = useState<{ id: string, type: EntityType } | null>(null);
+
+  const isProjectMode = activeAppTab !== 'home' && !!activeProject;
+
   return (
-    <div 
-      className={`min-h-screen flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
-      onClick={() => setSelectedDecorId(null)}
-    >
-      {currentMusic.url && (
-        <audio 
-          src={currentMusic.url} 
-          autoPlay 
-          loop 
-          className="hidden" 
+    <>
+      <ApplicationShell
+      activeTab={activeAppTab}
+      onSelectTab={(tab) => setActiveAppTab(tab)}
+      sidebarOverride={isProjectMode ? (
+        <ProjectSidebar 
+          activeTab={activeAppTab}
+          onTabChange={setActiveAppTab}
+          onBackToWorkspace={() => setActiveAppTab('home')}
+          projectTitle={activeProject?.title || 'Dự án'}
+          projectIcon={activeProject?.icon || '📁'}
         />
-      )}
+      ) : undefined}
+      onOpenStudioEditor={() => setActiveAppTab('editor')}
+      onOpenSettings={() => {
+        setShowSettingsMenu(true);
+        setActiveAppTab('card');
+      }}
+    >
+      <div 
+        className={`min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
+        onClick={() => setSelectedDecorId(null)}
+      >
+        <AISidebar />
+        {currentMusic.url && (
+          <audio 
+            src={currentMusic.url} 
+            autoPlay 
+            loop 
+            className="hidden" 
+          />
+        )}
+
+        {activeAppTab === 'home' && (
+          <WorkspaceDashboard
+            onNavigateTab={(tab) => setActiveAppTab(tab as AppTabType)}
+            onOpenNewMemory={() => setActiveAppTab('memory')}
+            onOpenNewTimeline={() => setActiveAppTab('timeline')}
+            onContinueEditing={() => setActiveAppTab('editor')}
+          />
+        )}
+
+        {activeAppTab === 'project-dashboard' && activeProject && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-8 px-6 bg-slate-50 overflow-y-auto z-10">
+            <div className="max-w-7xl mx-auto">
+              <ProjectDashboard 
+                project={activeProject}
+                onNavigateToModule={setActiveAppTab as any}
+                onUpdateProject={updateActiveProject}
+              />
+            </div>
+          </div>
+        )}
+
+        <ProjectCommandCenter 
+          isOpen={isCommandCenterOpen}
+          onClose={() => setIsCommandCenterOpen(false)}
+          project={activeProject!}
+          onAction={(action, payload) => {
+            if (action === 'open-editor') setActiveAppTab('editor');
+            if (action === 'open-memory') setActiveAppTab('memory');
+            // ... handle other actions
+          }}
+        />
+
+        {activeAppTab === 'assets' && (
+          <div className="w-full h-[calc(100vh-3.5rem)] flex flex-col z-10 bg-slate-50">
+            <MediaLibraryPanel />
+          </div>
+        )}
+
+        {activeAppTab === 'memory' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-gradient-to-b from-rose-50/50 via-slate-50 to-pink-50/30 overflow-y-auto z-10">
+            <MemoryDashboard onOpenRelated={(id) => setRelatedPanelInfo({ id, type: 'memory' })} />
+          </div>
+        )}
+
+        {activeAppTab === 'timeline' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-gradient-to-b from-rose-50/50 via-slate-50 to-pink-50/30 overflow-y-auto z-10">
+            <RelationshipTimelineView />
+          </div>
+        )}
+
+        {activeAppTab === 'aistudio' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-gradient-to-b from-rose-50/50 via-slate-50 to-pink-50/30 overflow-y-auto z-10">
+            <AIStudioDashboard
+              onOpenInEditor={(text) => {
+                setMessage(text);
+                setActiveAppTab('editor');
+              }}
+              onNavigateTab={(tab) => {
+                if (tab === 'home' || tab === 'card' || tab === 'memory' || tab === 'timeline' || tab === 'aistudio' || tab === 'editor') {
+                  setActiveAppTab(tab);
+                }
+              }}
+            />
+          </div>
+        )}
+
+        {activeAppTab === 'people' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <PeopleView />
+          </div>
+        )}
+
+        {activeAppTab === 'places' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <PlacesView />
+          </div>
+        )}
+
+        {activeAppTab === 'knowledge' && activeProject && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <KnowledgeDashboard projectId={activeProject.id} />
+          </div>
+        )}
+
+        {activeAppTab === 'automation' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <AutomationDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'automation' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <AutomationDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'graph' && (
+          <div className="w-full h-[calc(100vh-3.5rem)] z-10">
+            <GraphView />
+          </div>
+        )}
+
+        <RelatedContentPanel 
+          isOpen={!!relatedPanelInfo}
+          entityId={relatedPanelInfo?.id || ''}
+          entityType={relatedPanelInfo?.type || 'memory'}
+          onClose={() => setRelatedPanelInfo(null)}
+          onNavigate={(type, id) => {
+            // Handle cross-linking navigation
+            console.log('Navigating to', type, id);
+          }}
+        />
+
+        {activeAppTab === 'design-system' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] bg-slate-50 overflow-y-auto z-10">
+            <DesignSystemPlayground />
+          </div>
+        )}
+
+        {activeAppTab === 'editor' && (
+          <div className="w-full h-[calc(100vh-3.5rem)] relative z-10">
+            <StudioEditor
+              initialTitle={title}
+              initialMessage={message}
+              initialPlacedItems={placedItems}
+              scene={scene}
+              bgStyle={bgStyle}
+              fontStyle={fontStyle}
+              textColor={textColor}
+              onClose={() => setActiveAppTab('card')}
+              onSyncToCard={(newTitle, newMsg, newItems) => {
+                setTitle(newTitle);
+                setMessage(newMsg);
+                setPlacedItems(newItems);
+                setActiveAppTab('card');
+              }}
+            />
+          </div>
+        )}
+
+        {activeAppTab === 'card' && (
+          <>
       {/* Decorative background elements */}
       {bgStyle === 'floating' && (
         <div className="absolute inset-0 pointer-events-none opacity-30 overflow-hidden">
@@ -806,6 +1090,10 @@ export default function App() {
                 {isEditing ? <Check size={18} className="mb-0.5 sm:mb-1" /> : <PenTool size={18} className="mb-0.5 sm:mb-1" />}
                 <span>{isEditing ? "Lưu lại" : "Chỉnh sửa"}</span>
               </button>
+              <button onClick={() => setShowStudioEditor(true)} className="p-1.5 sm:p-2 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] font-semibold border border-rose-200">
+                <Sparkles size={18} className="mb-0.5 sm:mb-1 text-rose-600" />
+                <span>Studio 4.0</span>
+              </button>
               <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
                 <Video size={18} className="mb-0.5 sm:mb-1" />
                 <span>Tạo Video</span>
@@ -899,6 +1187,8 @@ export default function App() {
           </motion.div>
         ))}
       </AnimatePresence>
+      </>
+      )}
 
       {/* Video Generation Modal */}
       <AnimatePresence>
@@ -1196,6 +1486,55 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+
+      {/* Studio Editor 4.0 Overlay */}
+      {showStudioEditor && (
+        <StudioEditor
+          initialTitle={title}
+          initialMessage={message}
+          initialPlacedItems={placedItems}
+          scene={scene}
+          bgStyle={bgStyle}
+          fontStyle={fontStyle}
+          textColor={textColor}
+          onClose={() => setShowStudioEditor(false)}
+          onSyncToCard={(newTitle, newMsg, newItems) => {
+            setTitle(newTitle);
+            setMessage(newMsg);
+            setPlacedItems(newItems);
+            updateActiveProjectContent({
+              title: newTitle,
+              message: newMsg,
+              placedItems: newItems,
+            });
+            setShowStudioEditor(false);
+          }}
+        />
+      )}
+      </div>
+    <UniversalSearchOverlay
+      isOpen={isCommandPaletteOpen}
+      onClose={() => setIsCommandPaletteOpen(false)}
+      onSelectResult={(result) => {
+        // Handle navigation based on result type
+        if (result.type === 'project') setActiveAppTab('project-dashboard');
+        else if (result.type === 'memory') setActiveAppTab('memory');
+        else if (result.type === 'automation') setActiveAppTab('automation');
+      }}
+    />
+    <CommandCenter 
+      isOpen={isCommandCenterOpen}
+      onClose={() => setIsCommandCenterOpen(false)}
+    />
+    </ApplicationShell>
+    </>
+  );
+}
+
+export default function App() {
+  return (
+    <ProjectWorkspaceProvider>
+      <AppContent />
+    </ProjectWorkspaceProvider>
   );
 }

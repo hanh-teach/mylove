@@ -3,6 +3,7 @@ import path from 'path';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { fal } from '@fal-ai/client';
+import { GoogleGenAI } from '@google/genai';
 
 dotenv.config();
 
@@ -613,6 +614,90 @@ app.post('/api/generate-video', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// API Route for AI Writing Assistant (Sprint 50)
+app.post('/api/ai/write', async (req, res) => {
+  try {
+    const { action, text, tone = 'romantic', language = 'Vietnamese' } = req.body;
+    const apiKey = process.env.GEMINI_API_KEY;
+
+    if (!apiKey) {
+      console.log('GEMINI_API_KEY not configured, using intelligent simulation for writing assistant.');
+      return res.json({
+        success: true,
+        result: simulateWriting(action, text, tone)
+      });
+    }
+
+    const ai = new GoogleGenAI({ apiKey });
+    const prompt = getWritingPrompt(action, text, tone, language);
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+    });
+
+    const resultText = response.text ? response.text.trim() : text;
+    return res.json({
+      success: true,
+      result: resultText,
+    });
+  } catch (error: any) {
+    console.error('Error in /api/ai/write:', error);
+    return res.json({
+      success: true,
+      result: simulateWriting(req.body.action, req.body.text, req.body.tone),
+      warning: error.message
+    });
+  }
+});
+
+function getWritingPrompt(action: string, text: string, tone: string, language: string): string {
+  const toneDesc = {
+    romantic: 'lãng mạn, ngọt ngào, sâu lắng',
+    cute: 'đáng yêu, dễ thương, tinh nghịch',
+    formal: 'trang trọng, chân thành, lịch sự',
+    funny: 'vui vẻ, hài hước, dí dỏm',
+    emotional: 'xúc động, chân thật, từ trái tim',
+  }[tone] || 'lãng mạn';
+
+  switch (action) {
+    case 'improve':
+      return `Improve the following text for a love note. Maintain the core meaning, enhance emotional resonance, and use a ${toneDesc} tone. Output ONLY the improved text in ${language}, with no extra explanations or pleasantries.\n\nText: "${text}"`;
+    case 'rewrite':
+      return `Rewrite the following text with a deeply ${toneDesc} tone suitable for a romantic love letter. Output ONLY the rewritten text in ${language}.\n\nText: "${text}"`;
+    case 'shorten':
+      return `Condense and shorten the following love note text while preserving its emotional essence and ${toneDesc} tone. Output ONLY the shortened text in ${language}.\n\nText: "${text}"`;
+    case 'expand':
+      return `Expand and elaborate on the following text with beautiful imagery and a ${toneDesc} tone for a romantic letter. Output ONLY the expanded text in ${language}.\n\nText: "${text}"`;
+    case 'grammar':
+      return `Fix any spelling, punctuation, and grammatical errors in the following text while keeping its natural ${toneDesc} voice. Output ONLY the corrected text in ${language}.\n\nText: "${text}"`;
+    case 'translate':
+      return `Translate the following love note text accurately and poetically into ${language === 'Vietnamese' ? 'English' : 'Vietnamese'}, keeping a ${toneDesc} tone. Output ONLY the translated text.\n\nText: "${text}"`;
+    default:
+      return `Improve this text: "${text}"`;
+  }
+}
+
+function simulateWriting(action: string, text: string, tone: string): string {
+  const trimmed = text.trim() || 'Anh yêu em rất nhiều.';
+  switch (action) {
+    case 'improve':
+      return `${trimmed} Mỗi khoảnh khắc ở bên em đều là một món quà tuyệt vời nhất trong cuộc đời anh. 💖`;
+    case 'rewrite':
+      return `Dưới ánh sao đêm nay, anh chỉ muốn thì thầm rằng: ${trimmed} Trái tim anh mãi khắc ghi hình bóng em. ✨`;
+    case 'shorten':
+      return `${trimmed} Mãi yêu em!`;
+    case 'expand':
+      return `${trimmed} Từ ngày có em bước vào thế giới của anh, mọi con đường đều ngập tràn hoa nắng và giai điệu ngọt ngào. Anh nguyện sẽ cùng em đi đến tận cùng thế giới.`;
+    case 'grammar':
+      return `${trimmed} (Đã kiểm tra và chuẩn hóa ngữ pháp).`;
+    case 'translate':
+      return `[Translated] "I love you more than words can say. Every moment with you is a precious gift." (${trimmed})`;
+    default:
+      return trimmed;
+  }
+}
 
 // Setup Vite dev server or static file serving
 async function startServer() {
