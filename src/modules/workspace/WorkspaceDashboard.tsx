@@ -14,7 +14,7 @@ import { AppTabType } from '../../components/shell/ApplicationShell';
 import { WorkspaceSidebar } from '../../components/workspace/WorkspaceSidebar';
 import { ProjectToolbar } from '../../components/workspace/ProjectToolbar';
 import { ProjectGrid } from '../../components/workspace/ProjectGrid';
-import { TemplateGallery } from '../../components/template/TemplateGallery';
+import { SmartTemplateWizard } from '../../components/template/SmartTemplateWizard';
 import { DraftRecoveryCard } from './DraftRecoveryCard';
 import { QuickActions } from './QuickActions';
 import { RecentProjects } from './RecentProjects';
@@ -188,13 +188,13 @@ export const WorkspaceDashboard: React.FC<WorkspaceDashboardProps> = ({
         </div>
       </div>
 
-      {/* Template Gallery */}
-      <TemplateGallery
+      {/* Smart Template Wizard */}
+      <SmartTemplateWizard
         isOpen={isNewDialogOpen}
         onClose={() => setIsNewDialogOpen(false)}
-        onSelectProject={selectProject}
-        onCreated={() => {
-          onNavigateTab('editor');
+        onCreated={(projectId) => {
+          selectProject(projectId);
+          onNavigateTab('project-dashboard');
         }}
       />
     </div>

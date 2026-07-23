@@ -266,6 +266,16 @@ export class ProjectService {
     return ProjectSorter.sort(list, sortField, sortDir);
   }
 
+  public updateProject(id: string, updates: Partial<Project>): void {
+    this.projects = this.projects.map((p) => {
+      if (p.id === id) {
+        return { ...p, ...updates, updatedAt: Date.now() };
+      }
+      return p;
+    });
+    this.saveAndNotify();
+  }
+
   public subscribe(listener: () => void): () => void {
     this.listeners.add(listener);
     return () => this.listeners.delete(listener);

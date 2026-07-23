@@ -1,5 +1,5 @@
-import React from 'react';
-import { motion } from 'motion/react';
+import React, { useState } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, 
   Circle, 
@@ -25,11 +25,14 @@ import {
   Zap,
   ShieldCheck,
   Trophy,
-  Settings2
+  Settings2,
+  Save,
+  Users
 } from 'lucide-react';
 import { Project, ProjectActivity, ProjectChecklistItem, ProjectLifecyclePhase, WorkspaceInsight, PriorityTask } from '../../modules/workspace/Project';
 import { Button } from '../ui/Button';
 import { Typography } from '../ui/Typography';
+import { templateService, ISmartTemplate } from '../../modules/templates/TemplateService';
 
 interface ProjectDashboardProps {
   project: Project;
@@ -42,6 +45,8 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
   onNavigateToModule,
   onUpdateProject
 }) => {
+  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+
   const toggleChecklist = (id: string) => {
     const newChecklist = project.checklist.map(item => 
       item.id === id ? { ...item, completed: !item.completed } : item
@@ -55,6 +60,42 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
     );
     onUpdateProject({ priorityTasks: newTasks });
   };
+
+  const handleSaveAsTemplate = () => {
+    const customTemplate: ISmartTemplate = {
+      id: `custom-tpl-${Date.now()}`,
+      title: `${project.title} (Bản Mẫu)`,
+      description: project.description || 'Mẫu được lưu từ dự án của bạn',
+      category: project.metadata?.smartTemplate?.category || 'personal',
+      tags: project.tags || [],
+      icon: 'Star',
+      theme: project.themeColor,
+      aiPromptConfig: project.metadata?.smartTemplate?.aiPromptConfig || {
+        systemPrompt: 'Hỗ trợ viết theo phong cách cá nhân',
+        tone: 'creative',
+        suggestedTopics: []
+      },
+      structure: {
+        hasTimeline: true,
+        hasGallery: true,
+        hasChecklist: project.checklist.length > 0,
+        hasDraftWriter: true,
+        hasExportPreset: true
+      },
+      placeholders: [],
+      workflowSteps: [],
+      exportPreset: {
+        format: 'pdf',
+        aspectRatio: 'A4'
+      },
+      isUserCreated: true
+    };
+    
+    templateService.saveCustomTemplate(customTemplate);
+    setShowSaveSuccess(true);
+    setTimeout(() => setShowSaveSuccess(false), 2000);
+  };
+
 
   const getHealthColor = (health: string) => {
     switch (health) {
@@ -133,6 +174,31 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
                 Tiếp tục: {project.lastState.tab}
               </Button>
             )}
+            
+            <div className="relative">
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSaveAsTemplate}
+                className="bg-white/50 text-slate-700 hover:bg-slate-50 border-slate-200 mb-2"
+              >
+                <Save size={14} className="mr-2 text-indigo-500" />
+                Lưu làm Template
+              </Button>
+              <AnimatePresence>
+                {showSaveSuccess && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9 }}
+                    className="absolute top-full mt-2 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg flex items-center gap-1 z-50"
+                  >
+                    <CheckCircle2 size={12} /> Đã lưu thành Mẫu
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            
             <div className="text-right">
               <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">
                 {project.lifecyclePhase === 'idea' ? 'Giai đoạn ý tưởng' : 
@@ -276,7 +342,7 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
           </section>
 
           {/* Quick Modules */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
             <QuickModuleCard 
               icon={<PenTool size={20} />} 
               label="Editor" 
@@ -304,6 +370,13 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
               count="5 gợi ý"
               color="amber"
               onClick={() => onNavigateToModule('aistudio')}
+            />
+            <QuickModuleCard 
+              icon={<Users size={20} />} 
+              label="Members" 
+              count={`${project.members?.length || 0} người`}
+              color="emerald"
+              onClick={() => onNavigateToModule('collaboration')}
             />
           </div>
         </div>
@@ -393,7 +466,7 @@ interface QuickModuleCardProps {
   icon: React.ReactNode;
   label: string;
   count: string;
-  color: 'rose' | 'blue' | 'purple' | 'amber';
+  color: 'rose' | 'blue' | 'purple' | 'amber' | 'emerald';
   onClick: () => void;
 }
 
@@ -403,6 +476,7 @@ const QuickModuleCard: React.FC<QuickModuleCardProps> = ({ icon, label, count, c
     blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100',
     purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100',
     amber: 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100',
+    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100',
   };
 
   return (

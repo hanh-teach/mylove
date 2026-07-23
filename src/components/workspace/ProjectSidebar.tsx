@@ -8,8 +8,10 @@ import {
   Download, 
   Settings,
   ChevronLeft,
-  Command
+  Command,
+  Users
 } from 'lucide-react';
+
 import { AppTabType } from '../../types';
 
 interface ProjectSidebarProps {
@@ -33,6 +35,7 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
     { id: 'assets', label: 'Media & Tài sản', icon: <ImageIcon size={18} /> },
     { id: 'timeline', label: 'Dòng thời gian', icon: <Clock size={18} /> },
     { id: 'aistudio', label: 'AI Assistant', icon: <Wand2 size={18} /> },
+    { id: 'collaboration', label: 'Cộng tác', icon: <Users size={18} /> },
     { id: 'card', label: 'Xuất bản', icon: <Download size={18} /> },
     { id: 'settings', label: 'Cài đặt', icon: <Settings size={18} /> },
   ];

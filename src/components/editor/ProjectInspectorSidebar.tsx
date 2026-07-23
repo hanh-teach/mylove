@@ -18,7 +18,9 @@ import {
   Calendar,
   Clock,
   ExternalLink,
-  Loader2
+  Loader2,
+  Users,
+  MessageSquare
 } from 'lucide-react';
 import { useProjectWorkspace } from '../../modules/workspace/WorkspaceContext';
 import { MemoryService } from '../../modules/memory/MemoryService';
@@ -54,6 +56,7 @@ export const ProjectInspectorSidebar: React.FC<ProjectInspectorSidebarProps> = (
     memories: true,
     workflow: true,
     versions: true,
+    collaboration: true
   });
 
   // Local component states
@@ -676,6 +679,45 @@ export const ProjectInspectorSidebar: React.FC<ProjectInspectorSidebarProps> = (
           )}
         </div>
 
+        {/* 7. COLLABORATION SECTION */}
+        <div className="bg-white">
+          {renderSectionHeader('collaboration', 'Cộng tác & Phản hồi', <Users size={14} />)}
+          {sections.collaboration && (
+            <div className="p-3.5 space-y-3 text-[11px]">
+              <div className="flex justify-between items-center text-[10px] text-slate-400 font-semibold uppercase tracking-wider mb-1">
+                <span>Trạng thái cộng tác</span>
+              </div>
+              
+              <div className="space-y-2">
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                      <Users size={12} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 text-[11px]">{activeProject.members?.length || 0} Thành viên</div>
+                      <div className="text-[9px] text-slate-400">Tham gia dự án</div>
+                    </div>
+                  </div>
+                  <button className="text-indigo-600 hover:text-indigo-700 text-[10px] font-bold">Quản lý</button>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-100 rounded-xl p-2.5 flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                      <MessageSquare size={12} />
+                    </div>
+                    <div>
+                      <div className="font-bold text-slate-800 text-[11px]">{(activeProject.suggestions?.filter(s => s.status === 'pending').length || 0) + (activeProject.comments?.filter(c => !c.resolved).length || 0)} Phản hồi mới</div>
+                      <div className="text-[9px] text-slate-400">Chờ xem xét</div>
+                    </div>
+                  </div>
+                  <button className="text-amber-600 hover:text-amber-700 text-[10px] font-bold">Xem</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

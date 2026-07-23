@@ -1,3 +1,5 @@
+import { ProjectMember, ProjectSuggestion, ProjectComment } from '../collaboration/types';
+
 export type ProjectTemplate = 
   | 'letter'
   | 'card'
@@ -266,4 +268,9 @@ export interface Project {
   memoriesCount?: number;
   workflowTasksCount?: number;
   metadata?: any;
+  
+  // Sprint 85: Collaboration Foundation
+  members?: ProjectMember[];
+  suggestions?: ProjectSuggestion[];
+  comments?: ProjectComment[];
 }

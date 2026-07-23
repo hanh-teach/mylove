@@ -5,6 +5,13 @@ import {
   TemplateStyle 
 } from './TemplateTypes';
 
+export type { 
+  ISmartTemplate, 
+  ITemplateWizardAnswers, 
+  TemplateCategory, 
+  TemplateStyle 
+};
+
 class TemplateService {
   private STORAGE_KEY = 'lovenote_smart_templates';
 

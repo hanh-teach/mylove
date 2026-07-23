@@ -29,6 +29,16 @@ import { ProjectDashboard } from './components/workspace/ProjectDashboard';
 import { ProjectSidebar } from './components/workspace/ProjectSidebar';
 import { ProjectCommandCenter } from './components/workspace/ProjectCommandCenter';
 import { DesignSystemPlayground } from './modules/debug/DesignSystemPlayground';
+import { CollaborationDashboard } from './components/collaboration/CollaborationDashboard';
+import { SyncDashboard } from './components/sync/SyncDashboard';
+import { PluginManagerDashboard } from './components/plugins/PluginManagerDashboard';
+import { MarketplaceDashboard } from './components/marketplace/MarketplaceDashboard';
+import { DeveloperDashboard } from './components/developer/DeveloperDashboard';
+import { BetaPortalDashboard } from './components/release/BetaPortalDashboard';
+import { RcDashboard } from './components/release/RcDashboard';
+import { StableReleaseDashboard } from './components/launch/StableReleaseDashboard';
+import { MpsDashboard } from './components/mps/MpsDashboard';
+import { ProductionCompletionDashboard } from './components/completion/ProductionCompletionDashboard';
 
 import coupleImg from './assets/images/couple_romantic_icon_1783908155583.jpg';
 import bouquetImg from './assets/images/romantic_bouquet_icon_1783908168429.jpg';
@@ -731,9 +741,69 @@ function AppContent() {
           </div>
         )}
 
-        {activeAppTab === 'automation' && (
+        {activeAppTab === 'collaboration' && activeProject && (
           <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
-            <AutomationDashboard />
+            <div className="max-w-7xl mx-auto">
+              <CollaborationDashboard 
+                project={activeProject} 
+                onNavigateToModule={setActiveAppTab as any} 
+                onUpdateProject={updateActiveProject} 
+              />
+            </div>
+          </div>
+        )}
+
+        {activeAppTab === 'sync' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <SyncDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'plugins' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <PluginManagerDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'marketplace' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <MarketplaceDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'developer' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <DeveloperDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'completion' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <ProductionCompletionDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'mps' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <MpsDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'stable' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <StableReleaseDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'rc' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <RcDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'release' && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
+            <BetaPortalDashboard />
           </div>
         )}
 

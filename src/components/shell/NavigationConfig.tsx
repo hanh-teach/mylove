@@ -2,7 +2,7 @@ import React from 'react';
 import { AppTabType, NavigationSection } from '../../types';
 import { 
   Sparkles, ImageIcon, Heart, PenTool, BookOpen, Clock, Wand2, Settings, Info,
-  Folder, LayoutDashboard, Download, Printer, Plus, Star, Database, Zap
+  Folder, LayoutDashboard, Download, Printer, Plus, Star, Database, Zap, Store, Terminal, Radio, ShieldCheck, Rocket, Award
 } from 'lucide-react';
 
 export const NavigationConfig: NavigationSection[] = [
@@ -26,8 +26,22 @@ export const NavigationConfig: NavigationSection[] = [
     ]
   },
   {
+    section: 'Hệ sinh thái',
+    items: [
+      { id: 'marketplace', label: 'Marketplace', icon: <Store size={16} />, tabType: 'marketplace' },
+      { id: 'plugins', label: 'Plugins', icon: <Sparkles size={16} />, tabType: 'plugins' },
+    ]
+  },
+  {
     section: 'Hệ thống',
     items: [
+      { id: 'completion', label: 'Production Completion', icon: <ShieldCheck size={16} />, tabType: 'completion', badge: 'LPCP' },
+      { id: 'mps', label: 'Master Spec (MPS)', icon: <Award size={16} />, tabType: 'mps', badge: 'MPS v1.0' },
+      { id: 'stable', label: 'LoveNote 1.0 Stable', icon: <Rocket size={16} />, tabType: 'stable', badge: 'v1.0' },
+      { id: 'sync', label: 'Cloud & Sync', icon: <Database size={16} />, tabType: 'sync' },
+      { id: 'developer', label: 'Developer Portal', icon: <Terminal size={16} />, tabType: 'developer' },
+      { id: 'rc', label: 'Release Candidate (RC)', icon: <ShieldCheck size={16} />, tabType: 'rc', badge: 'Sprint 92' },
+      { id: 'release', label: 'Public Beta Portal', icon: <Radio size={16} />, tabType: 'release', badge: 'Beta' },
       { id: 'settings', label: 'Cài đặt', icon: <Settings size={16} />, tabType: 'card' },
       { id: 'design-system', label: 'Design System', icon: <Sparkles size={16} />, tabType: 'design-system' },
       { id: 'help', label: 'Hỗ trợ', icon: <Info size={16} />, tabType: 'card' },
