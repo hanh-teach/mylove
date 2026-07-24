@@ -1,38 +1,19 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion } from 'motion/react';
 import { 
-  CheckCircle2, 
-  Circle, 
-  Clock, 
-  Activity, 
   Sparkles, 
   Heart, 
-  AlertCircle,
-  ChevronRight,
-  LayoutDashboard,
-  PenTool,
-  ImageIcon,
-  MessageSquare,
-  Wand2,
-  FileText,
-  History,
-  TrendingUp,
-  Target,
-  RotateCcw,
-  Search,
-  Eye,
-  Star,
-  Zap,
-  ShieldCheck,
-  Trophy,
-  Settings2,
-  Save,
-  Users
+  Palette, 
+  FileSignature, 
+  ChevronRight, 
+  Upload, 
+  Image as ImageIcon,
+  User,
+  Type,
+  Trash2,
+  Check
 } from 'lucide-react';
-import { Project, ProjectActivity, ProjectChecklistItem, ProjectLifecyclePhase, WorkspaceInsight, PriorityTask } from '../../modules/workspace/Project';
-import { Button } from '../ui/Button';
-import { Typography } from '../ui/Typography';
-import { templateService, ISmartTemplate } from '../../modules/templates/TemplateService';
+import { Project } from '../../modules/workspace/Project';
 
 interface ProjectDashboardProps {
   project: Project;
@@ -45,495 +26,289 @@ export const ProjectDashboard: React.FC<ProjectDashboardProps> = ({
   onNavigateToModule,
   onUpdateProject
 }) => {
-  const [showSaveSuccess, setShowSaveSuccess] = useState(false);
+  const [title, setTitle] = useState(project.title || '');
+  const [description, setDescription] = useState(project.description || '');
+  const [category, setCategory] = useState(project.category || 'Thiệp Cưới');
+  const [recipient, setRecipient] = useState(project.content?.recipient || 'Gửi người thương yêu');
+  const [scene, setScene] = useState(project.content?.scene || 'rose');
+  const [fontStyle, setFontStyle] = useState(project.content?.fontStyle || 'dancing');
+  const [uploadedImages, setUploadedImages] = useState<string[]>(project.content?.uploadedImages || [
+    'https://images.unsplash.com/photo-1515934751635-c81c6bc9a2d8?auto=format&fit=crop&q=80&w=400',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?auto=format&fit=crop&q=80&w=400'
+  ]);
 
-  const toggleChecklist = (id: string) => {
-    const newChecklist = project.checklist.map(item => 
-      item.id === id ? { ...item, completed: !item.completed } : item
-    );
-    onUpdateProject({ checklist: newChecklist });
+  // Design scene options
+  const scenes = [
+    { id: 'rose', label: 'Hồng lãng mạn (Rose)', color: 'bg-rose-100 border-rose-200 text-rose-700' },
+    { id: 'sunset', label: 'Hoàng hôn ấm áp (Sunset)', color: 'bg-amber-100 border-amber-200 text-amber-700' },
+    { id: 'sky', label: 'Bầu trời đêm (Sky)', color: 'bg-indigo-100 border-indigo-200 text-indigo-700' },
+    { id: 'forest', label: 'Khu rừng xanh (Forest)', color: 'bg-emerald-100 border-emerald-200 text-emerald-700' },
+    { id: 'garden', label: 'Sân vườn nắng (Garden)', color: 'bg-teal-100 border-teal-200 text-teal-700' },
+    { id: 'sakura', label: 'Anh đào rơi (Sakura)', color: 'bg-pink-100 border-pink-200 text-pink-700' },
+    { id: 'plain', label: 'Cổ điển tối giản (Classic)', color: 'bg-slate-100 border-slate-200 text-slate-700' }
+  ];
+
+  // Font options
+  const fonts = [
+    { id: 'dancing', label: 'Viết tay mộc mạc', preview: 'Dancing Script', class: 'font-dancing' },
+    { id: 'pacifico', label: 'Nghệ thuật bay bổng', preview: 'Pacifico', class: 'font-pacifico' },
+    { id: 'playfair', label: 'Sang trọng cổ điển', preview: 'Playfair Display', class: 'font-serif' },
+    { id: 'lora', label: 'Trang trọng nhã nhặn', preview: 'Lora Serif', class: 'font-lora' },
+    { id: 'caveat', label: 'Ghi chú tự nhiên', preview: 'Caveat Notes', class: 'font-caveat' },
+    { id: 'nunito', label: 'Thân thiện dễ mến', preview: 'Nunito Round', class: 'font-nunito' }
+  ];
+
+  const handleSaveAndGenerate = () => {
+    // 1. Update project details in the global context
+    onUpdateProject({
+      title,
+      description,
+      category,
+      content: {
+        ...project.content,
+        title,
+        recipient,
+        scene,
+        fontStyle,
+        uploadedImages,
+        // Reset or initialize empty message so AI is triggered fresh
+        message: project.content?.message || ''
+      }
+    });
+
+    // 2. Set generating flag in window context so AIStudio can read it as auto-trigger
+    (window as any).LNOS_autoTriggerAI = true;
+
+    // 3. Navigate directly to AI view
+    onNavigateToModule('aistudio');
   };
 
-  const togglePriority = (id: string) => {
-    const newTasks = project.priorityTasks.map(task => 
-      task.id === id ? { ...task, completed: !task.completed } : task
-    );
-    onUpdateProject({ priorityTasks: newTasks });
-  };
-
-  const handleSaveAsTemplate = () => {
-    const customTemplate: ISmartTemplate = {
-      id: `custom-tpl-${Date.now()}`,
-      title: `${project.title} (Bản Mẫu)`,
-      description: project.description || 'Mẫu được lưu từ dự án của bạn',
-      category: project.metadata?.smartTemplate?.category || 'personal',
-      tags: project.tags || [],
-      icon: 'Star',
-      theme: project.themeColor,
-      aiPromptConfig: project.metadata?.smartTemplate?.aiPromptConfig || {
-        systemPrompt: 'Hỗ trợ viết theo phong cách cá nhân',
-        tone: 'creative',
-        suggestedTopics: []
-      },
-      structure: {
-        hasTimeline: true,
-        hasGallery: true,
-        hasChecklist: project.checklist.length > 0,
-        hasDraftWriter: true,
-        hasExportPreset: true
-      },
-      placeholders: [],
-      workflowSteps: [],
-      exportPreset: {
-        format: 'pdf',
-        aspectRatio: 'A4'
-      },
-      isUserCreated: true
-    };
-    
-    templateService.saveCustomTemplate(customTemplate);
-    setShowSaveSuccess(true);
-    setTimeout(() => setShowSaveSuccess(false), 2000);
-  };
-
-
-  const getHealthColor = (health: string) => {
-    switch (health) {
-      case 'excellent': return 'text-emerald-500 bg-emerald-50 border-emerald-100';
-      case 'good': return 'text-blue-500 bg-blue-50 border-blue-100';
-      case 'warning': return 'text-amber-500 bg-amber-50 border-amber-100';
-      case 'critical': return 'text-rose-500 bg-rose-50 border-rose-100';
-      default: return 'text-slate-500 bg-slate-50 border-slate-100';
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setUploadedImages(prev => [...prev, event.target!.result as string]);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
-  const getConfidenceColor = (confidence: string) => {
-    switch (confidence) {
-      case 'high': return 'text-emerald-500 bg-emerald-50';
-      case 'medium': return 'text-blue-500 bg-blue-50';
-      case 'low': return 'text-slate-400 bg-slate-50';
-      default: return 'text-slate-400 bg-slate-50';
-    }
+  const handleDeleteImage = (index: number) => {
+    setUploadedImages(prev => prev.filter((_, i) => i !== index));
   };
-
-  const getLifecycleIcon = (phase: ProjectLifecyclePhase) => {
-    switch (phase) {
-      case 'idea': return <Sparkles size={16} />;
-      case 'planning': return <Target size={16} />;
-      case 'collecting': return <ImageIcon size={16} />;
-      case 'writing': return <PenTool size={16} />;
-      case 'designing': return <LayoutDashboard size={16} />;
-      case 'reviewing': return <CheckCircle2 size={16} />;
-      case 'exporting': return <TrendingUp size={16} />;
-      default: return <Clock size={16} />;
-    }
-  };
-
-  const phases: ProjectLifecyclePhase[] = ['idea', 'planning', 'collecting', 'writing', 'designing', 'reviewing', 'exporting'];
 
   return (
-    <div className="space-y-8 pb-20">
-      {/* Header Banner */}
-      <div className="relative overflow-hidden bg-white rounded-[40px] p-8 sm:p-10 border border-slate-200/80 shadow-xs">
-        <div 
-          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 opacity-20"
-          style={{ backgroundColor: project.themeColor }}
-        />
+    <div className="max-w-4xl mx-auto space-y-10 pb-24 px-4 sm:px-6 select-none animate-in fade-in duration-300">
+      
+      {/* HEADER SECTION */}
+      <div className="text-center space-y-2 mt-4">
+        <div className="inline-flex items-center gap-2 px-3 py-1 bg-rose-50 border border-rose-100 rounded-full text-rose-600">
+          <Heart size={14} className="fill-rose-500 animate-pulse" />
+          <span className="text-xs font-bold uppercase tracking-wider">Thông Tin Dự Án</span>
+        </div>
+        <h1 className="text-3xl sm:text-4xl font-serif font-black text-slate-900 tracking-tight">
+          Thiết Lập Chi Tiết Thiệp
+        </h1>
+        <p className="text-sm text-slate-500 max-w-lg mx-auto leading-relaxed">
+          Khai báo những thông tin nguyên bản nhất về buổi lễ và phong cách mong muốn để AI bắt đầu dệt nên những câu chúc đầy chiều sâu cảm xúc.
+        </p>
+      </div>
+
+      {/* DETAILED INPUT FORM */}
+      <div className="bg-white rounded-[32px] border border-slate-200/80 p-6 sm:p-10 shadow-sm space-y-8">
         
-        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <span className="text-4xl">{project.icon}</span>
-              <div>
-                <Typography variant="h1" className="tracking-tighter leading-tight">
-                  {project.title}
-                </Typography>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider border ${getHealthColor(project.health)}`}>
-                    {project.health} Health
-                  </span>
-                  <span className="text-slate-400 text-xs">•</span>
-                  <span className="text-slate-500 text-xs font-medium">Cập nhật {project.lastEditedText}</span>
-                </div>
-              </div>
-            </div>
-            <Typography variant="body" className="text-slate-500 max-w-xl">
-              {project.description}
-            </Typography>
+        {/* ROW 1: TITLE & RECIPIENT */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <FileSignature size={14} className="text-slate-400" />
+              Tên Project Thiệp
+            </label>
+            <input 
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="Ví dụ: Thiệp cưới Lan & Minh"
+              className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all outline-none"
+            />
           </div>
 
-          <div className="flex flex-col items-end gap-3">
-            {project.lastState?.tab && project.lastState.tab !== 'project-dashboard' && (
-              <Button 
-                variant="secondary" 
-                size="sm"
-                onClick={() => onNavigateToModule(project.lastState!.tab as any)}
-                className="bg-white/80 hover:bg-white text-slate-900 border-slate-200 shadow-sm mb-2"
-              >
-                <RotateCcw size={14} className="mr-2" />
-                Tiếp tục: {project.lastState.tab}
-              </Button>
-            )}
-            
-            <div className="relative">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleSaveAsTemplate}
-                className="bg-white/50 text-slate-700 hover:bg-slate-50 border-slate-200 mb-2"
-              >
-                <Save size={14} className="mr-2 text-indigo-500" />
-                Lưu làm Template
-              </Button>
-              <AnimatePresence>
-                {showSaveSuccess && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.9 }}
-                    className="absolute top-full mt-2 right-0 bg-emerald-500 text-white text-[10px] font-bold px-3 py-1.5 rounded-lg whitespace-nowrap shadow-lg flex items-center gap-1 z-50"
-                  >
-                    <CheckCircle2 size={12} /> Đã lưu thành Mẫu
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-            
-            <div className="text-right">
-              <div className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-1">
-                {project.lifecyclePhase === 'idea' ? 'Giai đoạn ý tưởng' : 
-                 project.lifecyclePhase === 'planning' ? 'Đang lập kế hoạch' :
-                 project.lifecyclePhase === 'collecting' ? 'Đang thu thập tư liệu' :
-                 project.lifecyclePhase === 'writing' ? 'Đang soạn thảo nội dung' :
-                 project.lifecyclePhase === 'designing' ? 'Đang hoàn thiện thiết kế' :
-                 project.lifecyclePhase === 'reviewing' ? 'Đang kiểm duyệt' :
-                 'Sẵn sàng xuất bản'}
-              </div>
-              <div className="text-4xl font-black text-slate-900 tracking-tighter">{project.progress}%</div>
-            </div>
-            <div className="w-48 h-2 bg-slate-100 rounded-full overflow-hidden">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${project.progress}%` }}
-                className="h-full rounded-full"
-                style={{ backgroundColor: project.themeColor }}
-              />
-            </div>
+          <div className="space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <User size={14} className="text-slate-400" />
+              Đối Tượng Nhận Thiệp (Recipient)
+            </label>
+            <input 
+              type="text"
+              value={recipient}
+              onChange={(e) => setRecipient(e.target.value)}
+              placeholder="Ví dụ: Người thương yêu, Quý khách mời, Bạn bè..."
+              className="w-full px-4.5 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all outline-none"
+            />
           </div>
         </div>
-      </div>
 
-      {/* Smart Intelligence Row: Daily Focus & Priority Center */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Daily Focus */}
-        <section className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-[32px] p-8 text-white shadow-xl relative overflow-hidden group">
-          <div className="absolute -right-8 -bottom-8 w-48 h-48 bg-white/10 rounded-full blur-3xl group-hover:scale-110 transition-transform duration-500" />
-          <div className="relative z-10">
-            <div className="flex items-center gap-2 mb-6">
-              <Zap size={20} className="text-rose-200" />
-              <h3 className="font-black text-lg">Daily Focus</h3>
-            </div>
-            <div className="space-y-4">
-              {project.dailyFocus.map((focus, i) => (
-                <div key={i} className="flex items-center gap-3 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/10 hover:bg-white/20 transition-all cursor-pointer">
-                  <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center text-[10px] font-black">0{i+1}</div>
-                  <span className="font-bold text-sm">{focus}</span>
-                  <ChevronRight size={14} className="ml-auto opacity-40" />
-                </div>
-              ))}
-            </div>
+        {/* ROW 2: CATEGORY & DESCRIPTION */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
+          <div className="md:col-span-4 space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <Heart size={14} className="text-slate-400" />
+              Loại Lễ Kỷ Niệm
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full px-4 py-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm font-bold focus:bg-white focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all outline-none appearance-none cursor-pointer"
+            >
+              <option value="Thiệp Cưới">Thiệp Cưới (Wedding)</option>
+              <option value="Sinh Nhật">Sinh Nhật (Birthday)</option>
+              <option value="Kỷ Niệm">Lễ Kỷ Niệm (Anniversary)</option>
+              <option value="Lời Chúc">Lời Cảm Ơn / Lời Chúc</option>
+              <option value="Giáng Sinh">Giáng Sinh & Năm Mới</option>
+            </select>
           </div>
-        </section>
 
-        {/* Priority Center */}
-        <section className="lg:col-span-2 bg-white rounded-[32px] p-8 border border-slate-200/80 shadow-xs relative">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
-              <Star size={20} className="text-amber-500 fill-amber-500" />
-              Priority Center
-            </h3>
-            <button className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1 hover:text-slate-900">
-              <Settings2 size={12} /> Cấu hình AI
-            </button>
+          <div className="md:col-span-8 space-y-2">
+            <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+              <FileSignature size={14} className="text-slate-400" />
+              Chủ Đề & Câu Chuyện Của Bạn (Ý tưởng chính)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              rows={2}
+              placeholder="Ví dụ: Một đám cưới mộc mạc bên bãi biển cát trắng, ngập tràn nắng hoàng hôn ấm áp và tiếng guitar mộc mạc..."
+              className="w-full px-4.5 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-slate-800 text-sm font-medium focus:bg-white focus:ring-2 focus:ring-rose-200 focus:border-rose-400 transition-all outline-none resize-none leading-relaxed"
+            />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {project.priorityTasks.map((task) => (
-              <button 
-                key={task.id}
-                onClick={() => togglePriority(task.id)}
-                className={`flex items-start gap-4 p-4 rounded-[24px] border transition-all text-left group ${
-                  task.completed ? 'bg-slate-50 border-slate-100 opacity-60' : 'bg-white border-slate-100 hover:border-slate-300 hover:shadow-sm'
-                }`}
-              >
-                <div className={`mt-1 shrink-0 ${task.completed ? 'text-emerald-500' : 'text-slate-300 group-hover:text-slate-400'}`}>
-                  {task.completed ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                </div>
-                <div>
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${
-                      task.priority >= 4 ? 'text-rose-500' : 'text-blue-500'
-                    }`}>
-                      {'★'.repeat(task.priority)}{'☆'.repeat(5-task.priority)}
+        </div>
+
+        {/* ROW 3: STYLE SELECTION */}
+        <div className="space-y-4">
+          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Palette size={14} className="text-slate-400" />
+            Phong Cách & Không Gian (Visual Style)
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {scenes.map((sc) => {
+              const isSelected = scene === sc.id;
+              return (
+                <button
+                  key={sc.id}
+                  type="button"
+                  onClick={() => setScene(sc.id)}
+                  className={`p-4 rounded-2xl text-left border text-xs font-bold transition-all relative flex flex-col justify-between h-20 ${
+                    isSelected 
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-md scale-[1.02]' 
+                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <span className="opacity-90">{sc.label}</span>
+                  {isSelected && (
+                    <span className="absolute top-2 right-2 bg-rose-500 text-white p-0.5 rounded-full">
+                      <Check size={10} />
                     </span>
-                    <span className="text-[10px] font-bold text-slate-400">• {task.impact}</span>
-                  </div>
-                  <p className={`font-bold text-slate-900 ${task.completed ? 'line-through' : ''}`}>{task.label}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      </div>
-
-      {/* Workspace Insights Engine */}
-      {project.intelligenceSettings.showInsights && (
-        <section className="bg-slate-50/50 rounded-[40px] p-8 border border-slate-200/60">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="font-black text-xl text-slate-900 flex items-center gap-3">
-                <Wand2 size={24} className="text-purple-500" />
-                Workspace Insights
-              </h3>
-              <p className="text-sm text-slate-500 mt-1">Gợi ý chủ động từ AI dựa trên tình trạng dự án</p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {project.workspaceInsights.map((insight) => (
-              <div key={insight.id} className="bg-white p-6 rounded-[32px] border border-slate-200 shadow-sm hover:shadow-md transition-all flex flex-col h-full">
-                <div className="flex items-center justify-between mb-4">
-                  <div className={`p-2 rounded-xl ${
-                    insight.type === 'warning' ? 'bg-rose-50 text-rose-500' : 
-                    insight.type === 'suggestion' ? 'bg-blue-50 text-blue-500' : 'bg-amber-50 text-amber-500'
-                  }`}>
-                    {insight.type === 'warning' ? <AlertCircle size={20} /> : 
-                     insight.type === 'suggestion' ? <Zap size={20} /> : <Sparkles size={20} />}
-                  </div>
-                  <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${getConfidenceColor(insight.confidence)}`}>
-                    <ShieldCheck size={10} /> {insight.confidence} Confidence
-                  </div>
-                </div>
-                <p className="font-bold text-slate-900 mb-6 flex-1 leading-relaxed">{insight.message}</p>
-                {insight.actionLabel && (
-                  <Button variant="secondary" size="sm" className="w-full bg-slate-50 hover:bg-slate-100 border-none font-black text-[10px] uppercase tracking-widest py-3">
-                    {insight.actionLabel} <ChevronRight size={14} className="ml-1" />
-                  </Button>
-                )}
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Main Grid: Statistics & Progress */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-8">
-          {/* Health Dashboard */}
-          <section className="bg-white rounded-[32px] p-8 border border-slate-200/80 shadow-xs">
-            <h3 className="font-black text-lg text-slate-900 flex items-center gap-2 mb-6">
-              <Activity size={20} className="text-emerald-500" />
-              Project Health Status
-            </h3>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              <HealthBar label="Nội dung" value={project.healthStatus.content} color="rose" />
-              <HealthBar label="Hình ảnh" value={project.healthStatus.media} color="blue" />
-              <HealthBar label="Timeline" value={project.healthStatus.timeline} color="purple" />
-            </div>
-          </section>
-
-          {/* Quick Modules */}
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-            <QuickModuleCard 
-              icon={<PenTool size={20} />} 
-              label="Editor" 
-              count={`${project.content.wordCount || 0} từ`}
-              color="rose"
-              onClick={() => onNavigateToModule('editor')}
-            />
-            <QuickModuleCard 
-              icon={<ImageIcon size={20} />} 
-              label="Media" 
-              count={`${project.memoriesCount || 0} ảnh`}
-              color="blue"
-              onClick={() => onNavigateToModule('assets')}
-            />
-            <QuickModuleCard 
-              icon={<History size={20} />} 
-              label="Timeline" 
-              count="12 mốc"
-              color="purple"
-              onClick={() => onNavigateToModule('timeline')}
-            />
-            <QuickModuleCard 
-              icon={<Sparkles size={20} />} 
-              label="AI Assist" 
-              count="5 gợi ý"
-              color="amber"
-              onClick={() => onNavigateToModule('aistudio')}
-            />
-            <QuickModuleCard 
-              icon={<Users size={20} />} 
-              label="Members" 
-              count={`${project.members?.length || 0} người`}
-              color="emerald"
-              onClick={() => onNavigateToModule('collaboration')}
-            />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Sidebar: Productivity & Coach */}
-        <div className="space-y-8">
-          {/* Intelligence Settings (New) */}
-          <section className="bg-white rounded-[32px] p-6 border border-slate-200/80 shadow-xs">
-            <h3 className="font-black text-xs text-slate-900 flex items-center gap-2 mb-4">
-              <Settings2 size={16} className="text-slate-400" />
-              Intelligence Settings
-            </h3>
-            <div className="space-y-3">
-              <SettingToggle 
-                label="Hiển thị AI Insights" 
-                enabled={project.intelligenceSettings.showInsights} 
-                onChange={(v) => onUpdateProject({ intelligenceSettings: { ...project.intelligenceSettings, showInsights: v } })} 
-              />
-              <SettingToggle 
-                label="Theo dõi năng suất" 
-                enabled={project.intelligenceSettings.showProductivity} 
-                onChange={(v) => onUpdateProject({ intelligenceSettings: { ...project.intelligenceSettings, showProductivity: v } })} 
-              />
-              <SettingToggle 
-                label="AI Coach chủ động" 
-                enabled={project.intelligenceSettings.activeCoach} 
-                onChange={(v) => onUpdateProject({ intelligenceSettings: { ...project.intelligenceSettings, activeCoach: v } })} 
-              />
-            </div>
-          </section>
-
-          {/* Productivity Stats */}
-          {project.intelligenceSettings.showProductivity && (
-            <section className="bg-white rounded-[32px] p-8 border border-slate-200/80 shadow-xs">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-black text-lg text-slate-900 flex items-center gap-2">
-                  <Trophy size={20} className="text-amber-500" />
-                  Productivity
-                </h3>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tuần này</span>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <StatBox label="Dự án" value={project.productivity.weeklyProjects} />
-                <StatBox label="Giờ làm" value={project.productivity.weeklyHours} />
-                <StatBox label="Memories" value={project.productivity.newMemories} />
-                <StatBox label="AI Assists" value={project.productivity.aiAssists} />
-              </div>
-            </section>
-          )}
-
-          {/* AI Project Coach */}
-          <section className="bg-rose-50 rounded-[32px] p-8 border border-rose-100 shadow-sm">
-            <h3 className="font-black text-lg text-rose-900 flex items-center gap-2 mb-4">
-              <Wand2 size={20} className="text-rose-500" />
-              AI Project Coach
-            </h3>
-            <div className="space-y-4">
-              {project.coachSuggestions.map((suggestion, i) => (
-                <div key={i} className="flex gap-3 bg-white p-4 rounded-2xl border border-rose-200/50 shadow-sm">
-                  <div className="w-6 h-6 rounded-full bg-rose-100 flex items-center justify-center shrink-0">
-                    <Typography variant="body-sm" className="font-black text-rose-500 text-[10px]">{i + 1}</Typography>
+        {/* ROW 4: FONT SELECTION */}
+        <div className="space-y-4">
+          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <Type size={14} className="text-slate-400" />
+            Kiểu Chữ Biểu Cảm (Typography)
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {fonts.map((f) => {
+              const isSelected = fontStyle === f.id;
+              return (
+                <button
+                  key={f.id}
+                  type="button"
+                  onClick={() => setFontStyle(f.id)}
+                  className={`p-4 rounded-2xl text-left border transition-all flex items-center justify-between ${
+                    isSelected 
+                      ? 'border-slate-900 bg-slate-900 text-white shadow-md scale-[1.01]' 
+                      : 'border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700'
+                  }`}
+                >
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold">{f.label}</div>
+                    <div className={`text-[10px] opacity-70 mt-0.5 ${f.class}`}>
+                      {f.preview}
+                    </div>
                   </div>
-                  <Typography variant="body-sm" className="text-rose-900 font-medium leading-relaxed">
-                    {suggestion}
-                  </Typography>
-                </div>
-              ))}
-              <Button variant="primary" className="w-full bg-rose-600 hover:bg-rose-700 mt-2">
-                Nhận thêm gợi ý
-              </Button>
-            </div>
-          </section>
+                  {isSelected && (
+                    <span className="bg-rose-500 text-white p-0.5 rounded-full shrink-0 ml-2">
+                      <Check size={10} />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
+
+        {/* ROW 5: INTEGRATED MEMORY IMAGES */}
+        <div className="space-y-4">
+          <label className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
+            <ImageIcon size={14} className="text-slate-400" />
+            Album Ảnh Kỷ Niệm (Media Assets)
+          </label>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            
+            {/* Image cards */}
+            {uploadedImages.map((img, i) => (
+              <div key={i} className="relative group aspect-square rounded-2xl overflow-hidden border border-slate-100 bg-slate-100 shadow-3xs">
+                <img src={img} alt={`Kỷ niệm ${i + 1}`} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                <button
+                  type="button"
+                  onClick={() => handleDeleteImage(i)}
+                  className="absolute top-2 right-2 p-1.5 bg-white/90 text-slate-600 hover:text-rose-600 hover:bg-white rounded-lg shadow-sm transition-all opacity-0 group-hover:opacity-100"
+                >
+                  <Trash2 size={12} />
+                </button>
+              </div>
+            ))}
+
+            {/* Upload block */}
+            <label className="aspect-square rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50 hover:bg-slate-100/50 hover:border-slate-300 transition-all flex flex-col items-center justify-center p-4 cursor-pointer gap-1.5 text-center">
+              <Upload size={18} className="text-slate-400" />
+              <div className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Tải ảnh lên</div>
+              <div className="text-[9px] text-slate-400">JPG, PNG chất lượng</div>
+              <input type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
+            </label>
+          </div>
+        </div>
+
+        {/* ROW 6: CHIEF AI TRIGGER CTA BUTTON */}
+        <div className="pt-6 border-t border-slate-100">
+          <button
+            type="button"
+            disabled={!title.trim() || !description.trim()}
+            onClick={handleSaveAndGenerate}
+            className={`w-full py-4.5 rounded-2xl font-black text-sm tracking-widest uppercase transition-all shadow-md flex items-center justify-center gap-3 ${
+              title.trim() && description.trim()
+                ? 'bg-slate-900 hover:bg-slate-800 text-white hover:shadow-lg active:scale-[0.99] cursor-pointer'
+                : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'
+            }`}
+          >
+            <Sparkles size={18} className="text-rose-400 animate-pulse" />
+            Sáng Tạo Thiệp Bằng AI ✨
+          </button>
+          <p className="text-[10px] font-bold text-slate-400 text-center uppercase tracking-widest mt-3">
+            Hệ thống AI của LoveNote sẽ soạn thảo nội dung dạt dào cảm xúc dựa trên tư liệu trên.
+          </p>
+        </div>
+
       </div>
+
     </div>
   );
 };
-
-const StatBox: React.FC<{ label: string, value: number | string }> = ({ label, value }) => (
-  <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</div>
-    <div className="text-xl font-black text-slate-900 tracking-tight">{value}</div>
-  </div>
-);
-
-interface QuickModuleCardProps {
-  icon: React.ReactNode;
-  label: string;
-  count: string;
-  color: 'rose' | 'blue' | 'purple' | 'amber' | 'emerald';
-  onClick: () => void;
-}
-
-const QuickModuleCard: React.FC<QuickModuleCardProps> = ({ icon, label, count, color, onClick }) => {
-  const colors = {
-    rose: 'bg-rose-50 text-rose-600 border-rose-100 hover:bg-rose-100',
-    blue: 'bg-blue-50 text-blue-600 border-blue-100 hover:bg-blue-100',
-    purple: 'bg-purple-50 text-purple-600 border-purple-100 hover:bg-purple-100',
-    amber: 'bg-amber-50 text-amber-600 border-amber-100 hover:bg-amber-100',
-    emerald: 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100',
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`flex flex-col items-center justify-center p-6 rounded-[32px] border transition-all hover:shadow-md active:scale-95 text-center gap-3 ${colors[color]}`}
-    >
-      <div className="p-3 rounded-2xl bg-white shadow-sm">{icon}</div>
-      <div>
-        <div className="text-xs font-black uppercase tracking-widest">{label}</div>
-        <div className="text-[10px] font-bold opacity-60 mt-0.5">{count}</div>
-      </div>
-    </button>
-  );
-};
-
-const HealthBar: React.FC<{ label: string, value: number, color: string }> = ({ label, value, color }) => {
-  const colors: any = {
-    rose: 'bg-rose-500',
-    blue: 'bg-blue-500',
-    purple: 'bg-purple-500',
-  };
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{label}</span>
-        <span className="text-xs font-bold text-slate-900">{value}%</span>
-      </div>
-      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-        <motion.div 
-          initial={{ width: 0 }}
-          animate={{ width: `${value}%` }}
-          className={`h-full ${colors[color]}`}
-        />
-      </div>
-    </div>
-  );
-};
-
-const InsightStat: React.FC<{ label: string, value: string | number, isLong?: boolean }> = ({ label, value, isLong }) => (
-  <div className={isLong ? 'col-span-2' : ''}>
-    <div className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">{label}</div>
-    <div className={`font-black text-white tracking-tight ${isLong ? 'text-sm' : 'text-xl'}`}>{value}</div>
-  </div>
-);
-
-const SettingToggle: React.FC<{ label: string, enabled: boolean, onChange: (v: boolean) => void }> = ({ label, enabled, onChange }) => (
-  <button 
-    onClick={() => onChange(!enabled)}
-    className="w-full flex items-center justify-between p-2 hover:bg-slate-50 rounded-xl transition-colors"
-  >
-    <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">{label}</span>
-    <div className={`w-8 h-4 rounded-full transition-colors relative ${enabled ? 'bg-emerald-500' : 'bg-slate-200'}`}>
-      <motion.div 
-        animate={{ x: enabled ? 16 : 0 }}
-        className="absolute left-0 top-0 w-4 h-4 rounded-full bg-white shadow-sm border border-slate-100"
-      />
-    </div>
-  </button>
-);

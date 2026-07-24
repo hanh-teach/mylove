@@ -36,7 +36,13 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 return (
                   <button
                     key={item.id}
-                    onClick={() => item.tabType && onSelectTab(item.tabType)}
+                    onClick={() => {
+                      if (item.id === 'create') {
+                        window.dispatchEvent(new CustomEvent('trigger-new-project-dialog'));
+                      } else if (item.tabType) {
+                        onSelectTab(item.tabType);
+                      }
+                    }}
                     className={`group relative w-full flex items-center p-2 rounded-xl transition-all duration-200 ${
                       isCurrent
                         ? 'bg-rose-50 text-rose-600 shadow-sm'

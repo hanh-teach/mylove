@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef, useEffect, ComponentType } from 'react';
-import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2 } from 'lucide-react';
+import React, { useState, useRef, useEffect, useCallback, ComponentType } from 'react';
+import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2, Save, Home, Share2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import html2canvas from 'html2canvas';
 import { AISidebar } from './components/ai/AISidebar';
@@ -191,6 +191,8 @@ const textColors = [
 function AppContent() {
   const { activeProject, updateActiveProjectContent, updateActiveProject } = useProjectWorkspace();
 
+  const [title, setTitle] = useState("Nhập chủ đề");
+  const [message, setMessage] = useState("Vào Tùy chỉnh để thiết lập nhé!");
   const [hearts, setHearts] = useState<{ id: number; x: number; y: number }[]>([]);
   const [totalHeartsCount, setTotalHeartsCount] = useState(0);
   const [showDate, setShowDate] = useState(false);
@@ -218,6 +220,241 @@ function AppContent() {
     return (saved as AppTabType) || 'home';
   });
 
+  // Workspace Undo/Redo States
+  const [historyPast, setHistoryPast] = useState<any[]>([]);
+  const [historyFuture, setHistoryFuture] = useState<any[]>([]);
+  const isHistoryActionRef = useRef(false);
+  const [showSaveToast, setShowSaveToast] = useState(false);
+
+  // Load state or change state
+  const pushStateToHistory = useCallback((newState: any) => {
+    if (isHistoryActionRef.current) return;
+    
+    setHistoryPast(prev => {
+      if (prev.length > 0) {
+        const last = prev[prev.length - 1];
+        if (
+          last.title === newState.title &&
+          last.message === newState.message &&
+          last.scene === newState.scene &&
+          last.bgStyle === newState.bgStyle &&
+          last.fontStyle === newState.fontStyle &&
+          last.textColor === newState.textColor &&
+          JSON.stringify(last.placedItems) === JSON.stringify(newState.placedItems)
+        ) {
+          return prev;
+        }
+      }
+      return [...prev, newState];
+    });
+    setHistoryFuture([]);
+  }, []);
+
+  // Capture historical states
+  useEffect(() => {
+    if (!activeProject) return;
+    if (isHistoryActionRef.current) {
+      isHistoryActionRef.current = false;
+      return;
+    }
+    const currentState = {
+      title,
+      message,
+      placedItems,
+      scene,
+      bgStyle,
+      fontStyle,
+      textColor
+    };
+    pushStateToHistory(currentState);
+  }, [title, message, placedItems, scene, bgStyle, fontStyle, textColor, activeProject?.id]);
+
+  // Reset history on project load
+  useEffect(() => {
+    setHistoryPast([]);
+    setHistoryFuture([]);
+  }, [activeProject?.id]);
+
+  const handleWorkspaceUndo = () => {
+    if (historyPast.length <= 1) return;
+    isHistoryActionRef.current = true;
+    
+    const prev = historyPast[historyPast.length - 2];
+    const currentLast = historyPast[historyPast.length - 1];
+    
+    setTitle(prev.title);
+    setMessage(prev.message);
+    setPlacedItems(prev.placedItems);
+    setScene(prev.scene);
+    setBgStyle(prev.bgStyle);
+    setFontStyle(prev.fontStyle);
+    setTextColor(prev.textColor);
+    
+    setHistoryFuture(f => [...f, currentLast]);
+    setHistoryPast(p => p.slice(0, -1));
+  };
+
+  const handleWorkspaceRedo = () => {
+    if (historyFuture.length === 0) return;
+    isHistoryActionRef.current = true;
+    
+    const next = historyFuture[historyFuture.length - 1];
+    
+    setTitle(next.title);
+    setMessage(next.message);
+    setPlacedItems(next.placedItems);
+    setScene(next.scene);
+    setBgStyle(next.bgStyle);
+    setFontStyle(next.fontStyle);
+    setTextColor(next.textColor);
+    
+    setHistoryPast(p => [...p, next]);
+    setHistoryFuture(f => f.slice(0, -1));
+  };
+
+  const isModified = activeProject ? (
+    title !== (activeProject.content?.title || '') ||
+    message !== (activeProject.content?.message || '') ||
+    JSON.stringify(placedItems) !== JSON.stringify(activeProject.content?.placedItems || []) ||
+    scene !== (activeProject.content?.scene || 'plain') ||
+    bgStyle !== (activeProject.content?.bgStyle || 'solid') ||
+    fontStyle !== (activeProject.content?.fontStyle || 'playfair') ||
+    textColor !== (activeProject.content?.textColor || 'default')
+  ) : false;
+
+  const [showSaveCompletionBar, setShowSaveCompletionBar] = useState(false);
+  const [showCompletionScreen, setShowCompletionScreen] = useState(false);
+  const [showExportSuccessModal, setShowExportSuccessModal] = useState(false);
+  const [exportedFileName, setExportedFileName] = useState('');
+  const [saveStatus, setSaveStatus] = useState<'clean' | 'modified' | 'saving' | 'error'>('clean');
+
+  useEffect(() => {
+    if (isModified && saveStatus !== 'saving' && saveStatus !== 'error') {
+      setSaveStatus('modified');
+    } else if (!isModified && saveStatus === 'modified') {
+      setSaveStatus('clean');
+    }
+  }, [isModified, saveStatus]);
+
+  const handleSave = (isAutoSave = false) => {
+    if (activeProject) {
+      setSaveStatus('saving');
+      
+      // Simulate network delay for saving status
+      setTimeout(() => {
+        updateActiveProjectContent({
+          title,
+          message,
+          placedItems,
+          scene,
+          bgStyle,
+          fontStyle,
+          textColor,
+        });
+        
+        setSaveStatus('clean');
+        
+        if (!isAutoSave) {
+          setShowSaveToast(true);
+          setShowSaveCompletionBar(true);
+          setTimeout(() => setShowSaveToast(false), 2500);
+        }
+      }, 500);
+    }
+  };
+
+  // Auto-save effect (3 seconds after last modification)
+  useEffect(() => {
+    if (isModified && activeProject) {
+      const timer = setTimeout(() => {
+        handleSave(true);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [isModified, title, message, placedItems, scene, bgStyle, fontStyle, textColor, activeProject?.id]);
+
+  const handleComplete = () => {
+    if (isModified) {
+      handleSave(true);
+    }
+    setShowCompletionScreen(true);
+  };
+
+  const handleExportAction = (format: 'PDF' | 'PNG' | 'JPEG') => {
+    setExportedFileName(`thiep_${activeProject?.title || 'lovenote'}.${format.toLowerCase()}`);
+    setShowExportSuccessModal(true);
+  };
+
+  const handleSaveRef = useRef(handleSave);
+  useEffect(() => {
+    handleSaveRef.current = handleSave;
+  });
+
+  const [showSafetyModal, setShowSafetyModal] = useState(false);
+  const [showAISafetyModal, setShowAISafetyModal] = useState(false);
+  const [pendingTabChange, setPendingTabChange] = useState<AppTabType | null>(null);
+
+  const handleGoHome = () => {
+    if ((window as any).LNOS_isAIGenerating) {
+      setShowAISafetyModal(true);
+      return;
+    }
+    if (isModified) {
+      setPendingTabChange('home');
+      setShowSafetyModal(true);
+      return;
+    }
+    setActiveAppTab('home');
+  };
+
+  const handleTabSelect = (tab: AppTabType) => {
+    if (tab === 'home') {
+      handleGoHome();
+      return;
+    }
+    if ((window as any).LNOS_isAIGenerating) {
+      setShowAISafetyModal(true);
+      return;
+    }
+    if (isModified && tab !== activeAppTab) {
+      setPendingTabChange(tab);
+      setShowSafetyModal(true);
+    } else {
+      setActiveAppTab(tab);
+    }
+  };
+
+  const handleDiscard = () => {
+    if (activeProject && activeProject.content) {
+      if (activeProject.content.title !== undefined) setTitle(activeProject.content.title);
+      if (activeProject.content.message !== undefined) setMessage(activeProject.content.message);
+      if (activeProject.content.placedItems) setPlacedItems(activeProject.content.placedItems);
+      if (activeProject.content.scene) setScene(activeProject.content.scene as SceneType);
+      if (activeProject.content.bgStyle) setBgStyle(activeProject.content.bgStyle as BgStyleType);
+      if (activeProject.content.fontStyle) setFontStyle(activeProject.content.fontStyle as FontStyleType);
+      if (activeProject.content.textColor) setTextColor(activeProject.content.textColor);
+    }
+    setShowSafetyModal(false);
+    if (pendingTabChange) {
+      setActiveAppTab(pendingTabChange);
+      setPendingTabChange(null);
+    }
+  };
+
+  const handleSaveAndNavigate = () => {
+    handleSaveRef.current();
+    setShowSafetyModal(false);
+    if (pendingTabChange) {
+      setActiveAppTab(pendingTabChange);
+      setPendingTabChange(null);
+    }
+  };
+
+  const handleCancelNavigation = () => {
+    setShowSafetyModal(false);
+    setPendingTabChange(null);
+  };
+
   useEffect(() => {
     sessionStorage.setItem('lovenote_active_tab', activeAppTab);
   }, [activeAppTab]);
@@ -233,6 +470,12 @@ function AppContent() {
   // Global event listeners for Command Palette and settings trigger
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Save Shortcut (Ctrl+S or Cmd+S)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 's' || e.key === 'S')) {
+        e.preventDefault();
+        handleSaveRef.current();
+      }
+
       if ((e.ctrlKey || e.metaKey) && (e.key === 'k' || e.key === 'K')) {
         e.preventDefault();
         setIsCommandPaletteOpen(prev => !prev);
@@ -503,8 +746,6 @@ function AppContent() {
   }, []);
 
   const today = new Date();
-  const [title, setTitle] = useState("Nhập chủ đề");
-  const [message, setMessage] = useState("Vào Tùy chỉnh để thiết lập nhé!");
   const baseConfig = sceneConfig[scene];
   const chosenColor = textColors.find(c => c.id === textColor);
   const config = (chosenColor && chosenColor.id !== 'default') 
@@ -621,12 +862,12 @@ function AppContent() {
     <>
       <ApplicationShell
       activeTab={activeAppTab}
-      onSelectTab={(tab) => setActiveAppTab(tab)}
+      onSelectTab={handleTabSelect}
       sidebarOverride={isProjectMode ? (
         <ProjectSidebar 
           activeTab={activeAppTab}
-          onTabChange={setActiveAppTab}
-          onBackToWorkspace={() => setActiveAppTab('home')}
+          onTabChange={handleTabSelect}
+          onBackToWorkspace={handleGoHome}
           projectTitle={activeProject?.title || 'Dự án'}
           projectIcon={activeProject?.icon || '📁'}
         />
@@ -634,8 +875,11 @@ function AppContent() {
       onOpenStudioEditor={() => setActiveAppTab('editor')}
       onOpenSettings={() => {
         setShowSettingsMenu(true);
-        setActiveAppTab('card');
       }}
+      onOpenSearch={() => setIsCommandPaletteOpen(true)}
+      onGoHome={handleGoHome}
+      projectStatus={saveStatus}
+      onManualSave={() => handleSave(false)}
     >
       <div 
         className={`min-h-[calc(100vh-3.5rem)] flex flex-col items-center justify-center ${config.bg} p-6 relative overflow-hidden transition-colors duration-500`}
@@ -704,14 +948,14 @@ function AppContent() {
         {activeAppTab === 'aistudio' && (
           <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-gradient-to-b from-rose-50/50 via-slate-50 to-pink-50/30 overflow-y-auto z-10">
             <AIStudioDashboard
+              project={activeProject!}
+              onUpdateProject={updateActiveProject}
               onOpenInEditor={(text) => {
                 setMessage(text);
                 setActiveAppTab('editor');
               }}
               onNavigateTab={(tab) => {
-                if (tab === 'home' || tab === 'card' || tab === 'memory' || tab === 'timeline' || tab === 'aistudio' || tab === 'editor') {
-                  setActiveAppTab(tab);
-                }
+                setActiveAppTab(tab as any);
               }}
             />
           </div>
@@ -738,6 +982,71 @@ function AppContent() {
         {activeAppTab === 'automation' && (
           <div className="w-full min-h-[calc(100vh-3.5rem)] py-6 px-2 sm:px-6 bg-slate-50 overflow-y-auto z-10">
             <AutomationDashboard />
+          </div>
+        )}
+
+        {activeAppTab === 'export' && activeProject && (
+          <div className="w-full min-h-[calc(100vh-3.5rem)] py-8 px-6 bg-slate-50/50 overflow-y-auto z-10 flex items-center justify-center">
+            <div className="w-full max-w-4xl bg-white rounded-[32px] p-8 border border-slate-200/80 shadow-2xl relative overflow-hidden">
+              <div className="text-center space-y-2 mb-8">
+                <h2 className="text-3xl font-serif font-black text-slate-900 tracking-tight">Xuất Bản Thiệp Nghệ Thuật</h2>
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-none">Chất Lượng Cao • Sẵn Sàng Chia Sẻ & In Ấn</p>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between items-center text-center space-y-6">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-16 h-16 bg-rose-50 rounded-full flex items-center justify-center text-rose-500 border border-rose-100 shadow-sm">
+                      <Download size={28} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">Xuất file PDF chất lượng cao</h4>
+                      <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-xs">
+                        Định dạng PDF vector chất lượng siêu sắc nét, tối ưu hóa để mang đi in ấn tại các xưởng in chuyên nghiệp.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      handleExportAction('PDF');
+                    }}
+                    className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md hover:shadow-lg"
+                  >
+                    Tải xuống PDF
+                  </button>
+                </div>
+
+                <div className="bg-slate-50/80 p-6 rounded-2xl border border-slate-100 flex flex-col justify-between items-center text-center space-y-6">
+                  <div className="flex flex-col items-center space-y-4">
+                    <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center text-blue-500 border border-blue-100 shadow-sm">
+                      <Video size={28} />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800 text-sm">Xuất hình ảnh PNG sắc nét</h4>
+                      <p className="text-xs text-slate-400 mt-1.5 leading-relaxed max-w-xs">
+                        Chụp ảnh chất lượng cao định dạng PNG, hoàn hảo để gửi qua Zalo, Messenger hoặc đăng tải lên mạng xã hội.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      handleExportAction('PNG');
+                    }}
+                    className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white font-black text-xs uppercase tracking-wider rounded-xl transition-all shadow-md hover:shadow-lg"
+                  >
+                    Tải xuống PNG
+                  </button>
+                </div>
+              </div>
+
+              <div className="mt-8 border-t border-slate-100 pt-6 flex flex-col items-center justify-center">
+                <div className="text-center">
+                  <p className="text-xs text-slate-400 leading-normal">
+                    Thiệp cưới được thiết kế bởi <span className="font-bold text-rose-500">LoveNote AI</span>
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
         )}
 
@@ -929,7 +1238,11 @@ function AppContent() {
       )}
 
       {/* Text Content */}
-      <div className="text-center z-10" style={{ transform: `scale(${textSize})`, transformOrigin: 'center' }}>
+      <div className={`text-center z-10 transition-all ${
+        activeProject 
+          ? 'bg-white/95 backdrop-blur-md px-10 py-12 rounded-[32px] border border-slate-100 shadow-2xl max-w-xl mx-auto' 
+          : ''
+      }`} style={{ transform: `scale(${textSize})`, transformOrigin: 'center' }}>
         {isEditing ? (
           <>
             <input 
@@ -958,6 +1271,39 @@ function AppContent() {
           </>
         )}
       </div>
+
+      {activeProject && (
+        <div className="mt-12 z-30 flex items-center justify-center gap-3 bg-white/95 backdrop-blur-md px-6 py-4 rounded-2xl shadow-xl border border-slate-100 flex-wrap">
+          <button
+            onClick={() => setActiveAppTab('editor')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <PenTool size={14} className="text-slate-500" />
+            Chỉnh sửa
+          </button>
+          <button
+            onClick={() => setActiveAppTab('aistudio')}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-50 hover:bg-slate-100 text-slate-800 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <Wand2 size={14} className="text-rose-500" />
+            Tạo lại (AI)
+          </button>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-2 px-5 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-sm"
+          >
+            <Save size={14} />
+            Lưu
+          </button>
+          <button
+            onClick={handleGoHome}
+            className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+          >
+            <Home size={14} />
+            Về Home
+          </button>
+        </div>
+      )}
 
       {/* Placed decor items */}
       {placedItems.map(item => {
@@ -1029,169 +1375,171 @@ function AppContent() {
       })}
 
       {/* Background/Decor Menu */}
-      <div ref={settingsMenuRef} className="fixed bottom-4 left-2 sm:left-4 z-20 flex flex-col items-start gap-2">
-        <AnimatePresence>
-          {showSettingsMenu && (
-            <motion.div 
-              initial={{ opacity: 0, y: 10, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 10, scale: 0.95 }}
-              className="flex flex-wrap max-w-[calc(100vw-16px)] sm:max-w-none bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
-            >
-              <button onClick={cycleBgStyle} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
-                <Sparkles size={18} className="mb-0.5 sm:mb-1" />
-                <span>BG: {bgStyle}</span>
-              </button>
-              <button onClick={cycleFont} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
-                <Type size={18} className="mb-0.5 sm:mb-1" />
-                <span>Font</span>
-              </button>
-              <div className="relative">
+      {!activeProject && (
+        <div ref={settingsMenuRef} className="fixed bottom-4 left-2 sm:left-4 z-20 flex flex-col items-start gap-2">
+          <AnimatePresence>
+            {showSettingsMenu && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                className="flex flex-wrap max-w-[calc(100vw-16px)] sm:max-w-none bg-white/90 p-2 rounded-2xl shadow-lg gap-1 sm:gap-2"
+              >
+                <button onClick={cycleBgStyle} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
+                  <Sparkles size={18} className="mb-0.5 sm:mb-1" />
+                  <span>BG: {bgStyle}</span>
+                </button>
+                <button onClick={cycleFont} className="p-1.5 sm:p-2 rounded-xl text-emerald-800 hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
+                  <Type size={18} className="mb-0.5 sm:mb-1" />
+                  <span>Font</span>
+                </button>
+                <div className="relative">
+                  <button onClick={() => {
+                    setShowMusicMenu(!showMusicMenu);
+                    setShowTextColorMenu(false);
+                    setShowTextSizeMenu(false);
+                    setShowPalette(false);
+                  }} className={`p-1.5 sm:p-2 rounded-xl ${currentMusic.id !== 'none' ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
+                    <Music size={18} className="mb-0.5 sm:mb-1" />
+                    <span>Nhạc</span>
+                  </button>
+                  <AnimatePresence>
+                    {showMusicMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-white rounded-xl shadow-xl p-2 flex flex-col gap-1 z-30 border border-emerald-100"
+                      >
+                        {musicTracks.map(track => (
+                          <button
+                            key={track.id}
+                            onClick={() => { setCurrentMusic(track); setShowMusicMenu(false); }}
+                            className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-2 ${currentMusic.id === track.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
+                          >
+                            <track.icon size={14} />
+                            {track.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="relative">
+                  <button onClick={() => {
+                    setShowTextColorMenu(!showTextColorMenu);
+                    setShowMusicMenu(false);
+                    setShowTextSizeMenu(false);
+                    setShowPalette(false);
+                  }} className={`p-1.5 sm:p-2 rounded-xl ${textColor !== 'default' ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
+                    <Palette size={18} className="mb-0.5 sm:mb-1" />
+                    <span>Màu chữ</span>
+                  </button>
+                  <AnimatePresence>
+                    {showTextColorMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-28 bg-white rounded-xl shadow-xl p-2 flex flex-col gap-1 z-30 border border-emerald-100 max-h-48 overflow-y-auto"
+                      >
+                        {textColors.map(color => (
+                          <button
+                            key={color.id}
+                            onClick={() => { setTextColor(color.id); setShowTextColorMenu(false); }}
+                            className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors ${textColor === color.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
+                          >
+                            {color.label}
+                          </button>
+                        ))}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+                <div className="relative">
+                  <button onClick={() => {
+                    setShowTextSizeMenu(!showTextSizeMenu);
+                    setShowMusicMenu(false);
+                    setShowTextColorMenu(false);
+                    setShowPalette(false);
+                  }} className={`p-1.5 sm:p-2 rounded-xl ${textSize !== 1 ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
+                    <div className="flex items-center justify-center mb-0.5 sm:mb-1 h-[18px]">
+                      <span className="font-bold text-lg leading-none">A</span>
+                      <span className="font-bold text-xs leading-none">A</span>
+                    </div>
+                    <span>Cỡ chữ</span>
+                  </button>
+                  <AnimatePresence>
+                    {showTextSizeMenu && (
+                      <motion.div 
+                        initial={{ opacity: 0, y: 5 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 5 }}
+                        className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white rounded-xl shadow-xl p-2 flex items-center gap-1 z-30 border border-emerald-100"
+                      >
+                        <button
+                          onClick={() => setTextSize(Math.max(0.5, +(textSize - 0.1).toFixed(1)))}
+                          className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
+                        >
+                          <Minus size={20} />
+                        </button>
+                        <span className="flex items-center justify-center w-10 text-sm font-medium">{Math.round(textSize * 100)}%</span>
+                        <button
+                          onClick={() => setTextSize(Math.min(2.5, +(textSize + 0.1).toFixed(1)))}
+                          className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
+                        >
+                          <Plus size={20} />
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
                 <button onClick={() => {
-                  setShowMusicMenu(!showMusicMenu);
+                  setShowPalette(!showPalette);
+                  setShowMusicMenu(false);
                   setShowTextColorMenu(false);
                   setShowTextSizeMenu(false);
-                  setShowPalette(false);
-                }} className={`p-1.5 sm:p-2 rounded-xl ${currentMusic.id !== 'none' ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
-                  <Music size={18} className="mb-0.5 sm:mb-1" />
-                  <span>Nhạc</span>
+                }} className={`p-1.5 sm:p-2 rounded-xl ${showPalette ? 'bg-emerald-100 text-emerald-900' : 'text-emerald-800 hover:bg-emerald-50'} transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
+                  <Flower size={18} className="mb-0.5 sm:mb-1" />
+                  <span>Decor</span>
                 </button>
-                <AnimatePresence>
-                  {showMusicMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-32 bg-white rounded-xl shadow-xl p-2 flex flex-col gap-1 z-30 border border-emerald-100"
-                    >
-                      {musicTracks.map(track => (
-                        <button
-                          key={track.id}
-                          onClick={() => { setCurrentMusic(track); setShowMusicMenu(false); }}
-                          className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors flex items-center gap-2 ${currentMusic.id === track.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
-                        >
-                          <track.icon size={14} />
-                          {track.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="relative">
-                <button onClick={() => {
-                  setShowTextColorMenu(!showTextColorMenu);
-                  setShowMusicMenu(false);
-                  setShowTextSizeMenu(false);
-                  setShowPalette(false);
-                }} className={`p-1.5 sm:p-2 rounded-xl ${textColor !== 'default' ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
-                  <Palette size={18} className="mb-0.5 sm:mb-1" />
-                  <span>Màu chữ</span>
+                <button onClick={() => setIsEditing(!isEditing)} className={`p-1.5 sm:p-2 rounded-xl transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] ${isEditing ? "bg-rose-100 text-rose-700" : "text-emerald-800 hover:bg-emerald-50"}`}>
+                  {isEditing ? <Check size={18} className="mb-0.5 sm:mb-1" /> : <PenTool size={18} className="mb-0.5 sm:mb-1" />}
+                  <span>{isEditing ? "Lưu lại" : "Chỉnh sửa"}</span>
                 </button>
-                <AnimatePresence>
-                  {showTextColorMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-28 bg-white rounded-xl shadow-xl p-2 flex flex-col gap-1 z-30 border border-emerald-100 max-h-48 overflow-y-auto"
-                    >
-                      {textColors.map(color => (
-                        <button
-                          key={color.id}
-                          onClick={() => { setTextColor(color.id); setShowTextColorMenu(false); }}
-                          className={`text-left px-2 py-1.5 text-xs rounded-lg transition-colors ${textColor === color.id ? 'bg-rose-100 text-rose-800 font-bold' : 'hover:bg-rose-50 text-gray-700'}`}
-                        >
-                          {color.label}
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <div className="relative">
-                <button onClick={() => {
-                  setShowTextSizeMenu(!showTextSizeMenu);
-                  setShowMusicMenu(false);
-                  setShowTextColorMenu(false);
-                  setShowPalette(false);
-                }} className={`p-1.5 sm:p-2 rounded-xl ${textSize !== 1 ? 'text-rose-600' : 'text-emerald-800'} hover:bg-emerald-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
-                  <div className="flex items-center justify-center mb-0.5 sm:mb-1 h-[18px]">
-                    <span className="font-bold text-lg leading-none">A</span>
-                    <span className="font-bold text-xs leading-none">A</span>
-                  </div>
-                  <span>Cỡ chữ</span>
+                <button onClick={() => setShowStudioEditor(true)} className="p-1.5 sm:p-2 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] font-semibold border border-rose-200">
+                  <Sparkles size={18} className="mb-0.5 sm:mb-1 text-rose-600" />
+                  <span>Studio 4.0</span>
                 </button>
-                <AnimatePresence>
-                  {showTextSizeMenu && (
-                    <motion.div 
-                      initial={{ opacity: 0, y: 5 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: 5 }}
-                      className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 bg-white rounded-xl shadow-xl p-2 flex items-center gap-1 z-30 border border-emerald-100"
-                    >
-                      <button
-                        onClick={() => setTextSize(Math.max(0.5, +(textSize - 0.1).toFixed(1)))}
-                        className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
-                      >
-                        <Minus size={20} />
-                      </button>
-                      <span className="flex items-center justify-center w-10 text-sm font-medium">{Math.round(textSize * 100)}%</span>
-                      <button
-                        onClick={() => setTextSize(Math.min(2.5, +(textSize + 0.1).toFixed(1)))}
-                        className="p-1.5 hover:bg-rose-50 text-rose-600 rounded-lg transition-colors"
-                      >
-                        <Plus size={20} />
-                      </button>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </div>
-              <button onClick={() => {
-                setShowPalette(!showPalette);
+                <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
+                  <Video size={18} className="mb-0.5 sm:mb-1" />
+                  <span>Tạo Video</span>
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button 
+            onClick={() => {
+              setShowSettingsMenu(!showSettingsMenu);
+              if (showSettingsMenu) {
+                setShowPalette(false);
                 setShowMusicMenu(false);
                 setShowTextColorMenu(false);
                 setShowTextSizeMenu(false);
-              }} className={`p-1.5 sm:p-2 rounded-xl ${showPalette ? 'bg-emerald-100 text-emerald-900' : 'text-emerald-800 hover:bg-emerald-50'} transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]`}>
-                <Flower size={18} className="mb-0.5 sm:mb-1" />
-                <span>Decor</span>
-              </button>
-              <button onClick={() => setIsEditing(!isEditing)} className={`p-1.5 sm:p-2 rounded-xl transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] ${isEditing ? "bg-rose-100 text-rose-700" : "text-emerald-800 hover:bg-emerald-50"}`}>
-                {isEditing ? <Check size={18} className="mb-0.5 sm:mb-1" /> : <PenTool size={18} className="mb-0.5 sm:mb-1" />}
-                <span>{isEditing ? "Lưu lại" : "Chỉnh sửa"}</span>
-              </button>
-              <button onClick={() => setShowStudioEditor(true)} className="p-1.5 sm:p-2 rounded-xl text-rose-700 bg-rose-50 hover:bg-rose-100 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px] font-semibold border border-rose-200">
-                <Sparkles size={18} className="mb-0.5 sm:mb-1 text-rose-600" />
-                <span>Studio 4.0</span>
-              </button>
-              <button onClick={generateVideo} className="p-1.5 sm:p-2 rounded-xl text-rose-600 hover:bg-rose-50 transition-all text-xs flex flex-col items-center min-w-[50px] sm:min-w-[60px]">
-                <Video size={18} className="mb-0.5 sm:mb-1" />
-                <span>Tạo Video</span>
-              </button>
-            </motion.div>
-          )}
-        </AnimatePresence>
-
-        <button 
-          onClick={() => {
-            setShowSettingsMenu(!showSettingsMenu);
-            if (showSettingsMenu) {
-              setShowPalette(false);
-              setShowMusicMenu(false);
-              setShowTextColorMenu(false);
-              setShowTextSizeMenu(false);
-            }
-          }} 
-          className="bg-white/95 p-2 sm:p-3 rounded-full shadow-lg text-rose-600 hover:bg-white transition-all flex items-center justify-center gap-2 font-medium"
-        >
-          <Settings size={20} className={showSettingsMenu ? "rotate-90 transition-transform duration-300" : "transition-transform duration-300"} />
-          <span className="text-xs sm:text-sm pr-1">Tùy chỉnh</span>
-        </button>
-      </div>
+              }
+            }} 
+            className="bg-white/95 p-2 sm:p-3 rounded-full shadow-lg text-rose-600 hover:bg-white transition-all flex items-center justify-center gap-2 font-medium"
+          >
+            <Settings size={20} className={showSettingsMenu ? "rotate-90 transition-transform duration-300" : "transition-transform duration-300"} />
+            <span className="text-xs sm:text-sm pr-1">Tùy chỉnh</span>
+          </button>
+        </div>
+      )}
 
       {/* Decor Palette */}
       <AnimatePresence>
-        {showPalette && showSettingsMenu && (
+        {showPalette && showSettingsMenu && !activeProject && (
           <motion.div 
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
@@ -1222,19 +1570,21 @@ function AppContent() {
       </AnimatePresence>
 
       {/* Bottom Right Control Panel */}
-      <div className="fixed bottom-4 right-2 sm:right-4 z-20 flex items-center gap-1 sm:gap-2">
-        <button onClick={addHeart} className="bg-white/90 text-rose-800 p-1.5 sm:p-2 px-2 sm:px-3 rounded-full shadow-md transition-all hover:bg-white flex items-center gap-1">
-          <Heart size={18} />
-          <span className="font-bold text-xs">{totalHeartsCount}</span>
-        </button>
-        <button onClick={resetHearts} className="bg-white/90 text-rose-800 p-1.5 sm:p-2 rounded-full shadow-md transition-all hover:bg-white">
-          <RotateCcw size={18} />
-        </button>
-        <button onClick={cycleScene} className="bg-white/90 text-emerald-800 p-1.5 sm:p-2 px-2 sm:px-3 rounded-full shadow-md hover:bg-white transition-all flex items-center gap-1">
-          <Leaf size={18} />
-          <span className="font-medium text-xs sm:text-sm">Change</span>
-        </button>
-      </div>
+      {!activeProject && (
+        <div className="fixed bottom-4 right-2 sm:right-4 z-20 flex items-center gap-1 sm:gap-2">
+          <button onClick={addHeart} className="bg-white/90 text-rose-800 p-1.5 sm:p-2 px-2 sm:px-3 rounded-full shadow-md transition-all hover:bg-white flex items-center gap-1">
+            <Heart size={18} />
+            <span className="font-bold text-xs">{totalHeartsCount}</span>
+          </button>
+          <button onClick={resetHearts} className="bg-white/90 text-rose-800 p-1.5 sm:p-2 rounded-full shadow-md transition-all hover:bg-white">
+            <RotateCcw size={18} />
+          </button>
+          <button onClick={cycleScene} className="bg-white/90 text-emerald-800 p-1.5 sm:p-2 px-2 sm:px-3 rounded-full shadow-md hover:bg-white transition-all flex items-center gap-1">
+            <Leaf size={18} />
+            <span className="font-medium text-xs sm:text-sm">Change</span>
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {hearts.map(heart => (
@@ -1557,6 +1907,116 @@ function AppContent() {
         )}
       </AnimatePresence>
 
+      {/* LNOS SAFETY CHECKPOINT MODAL (LAW-6 & LAW-1) */}
+      <AnimatePresence>
+        {showSafetyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-sm w-full border border-rose-100 flex flex-col items-center text-center space-y-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center">
+                <AlertCircle size={24} />
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Bạn có thay đổi chưa lưu
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Thiết kế thiệp kỷ niệm của bạn đang có những thay đổi chưa được lưu trữ.
+                </p>
+              </div>
+
+              {/* LNOS Confirmation Grammar Stack */}
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <button
+                  onClick={handleSaveAndNavigate}
+                  className="w-full py-2.5 px-4 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  <Check size={14} />
+                  {pendingTabChange === 'home' ? 'Lưu rồi về Home' : 'Lưu lại & di chuyển'}
+                </button>
+
+                <button
+                  onClick={handleDiscard}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  {pendingTabChange === 'home' ? 'Về Home không lưu' : 'Di chuyển không lưu'}
+                </button>
+
+                <button
+                  onClick={handleCancelNavigation}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold text-xs transition-all active:scale-95 flex items-center justify-center gap-2"
+                >
+                  Tiếp tục chỉnh sửa
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* LNOS AI RUNNING SAFETY MODAL */}
+      <AnimatePresence>
+        {showAISafetyModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white rounded-3xl shadow-2xl p-6 sm:p-8 max-w-sm w-full border border-rose-100 flex flex-col items-center text-center space-y-4"
+            >
+              <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center animate-pulse">
+                <Sparkles size={22} className="text-rose-500" />
+              </div>
+              
+              <div className="space-y-1">
+                <h3 className="text-base font-extrabold text-slate-900">
+                  AI đang tạo nội dung
+                </h3>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Thiệp đang được phác thảo bởi AI Engine. Việc điều hướng sẽ dừng tiến trình này.
+                </p>
+              </div>
+
+              {/* LNOS AI Navigation Stack */}
+              <div className="flex flex-col gap-2 w-full pt-1">
+                <button
+                  onClick={() => setShowAISafetyModal(false)}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs shadow-md transition-all active:scale-95"
+                >
+                  Đợi hoàn thành
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('LNOS_cancel_ai'));
+                    setShowAISafetyModal(false);
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs transition-all active:scale-95"
+                >
+                  Hủy tạo
+                </button>
+
+                <button
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('LNOS_cancel_ai'));
+                    setShowAISafetyModal(false);
+                    setActiveAppTab('home');
+                  }}
+                  className="w-full py-2.5 px-4 rounded-xl bg-white border border-slate-200 hover:bg-slate-50 text-slate-500 font-bold text-xs transition-all active:scale-95"
+                >
+                  Về Home
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Studio Editor 4.0 Overlay */}
       {showStudioEditor && (
         <StudioEditor
@@ -1581,6 +2041,216 @@ function AppContent() {
           }}
         />
       )}
+
+      {/* Floating Action Buttons */}
+      {isProjectMode && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[80] flex items-center gap-4">
+          
+          {/* Editor Controls */}
+          {activeAppTab === 'editor' && (
+            <div className="flex items-center gap-1 bg-white/95 backdrop-blur-md px-3 py-2 rounded-2xl shadow-xl border border-slate-100 font-bold text-xs select-none">
+              <button 
+                onClick={handleWorkspaceUndo}
+                disabled={historyPast.length <= 1}
+                className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-50"
+                title="Hoàn tác (Undo)"
+              >
+                <RotateCcw size={14} className="rotate-45" />
+                <span>Undo</span>
+              </button>
+
+              <div className="h-3 w-px bg-slate-200 mx-1" />
+
+              <button 
+                onClick={handleWorkspaceRedo}
+                disabled={historyFuture.length === 0}
+                className="flex items-center gap-1.5 text-slate-500 hover:text-slate-800 disabled:opacity-30 disabled:hover:bg-transparent transition-colors py-1 px-2.5 rounded-lg hover:bg-slate-50"
+                title="Làm lại (Redo)"
+              >
+                <RotateCcw size={14} className="-scale-x-100 -rotate-45" />
+                <span>Redo</span>
+              </button>
+            </div>
+          )}
+
+          {/* Completion Button in Preview */}
+          {activeAppTab === 'card' && (
+            <button 
+              onClick={handleComplete}
+              className="flex items-center gap-2 bg-rose-600 hover:bg-rose-700 text-white transition-all py-3 px-6 rounded-2xl shadow-xl hover:shadow-rose-500/30 font-bold text-sm select-none"
+            >
+              <Check size={18} />
+              <span>Hoàn thành thiệp</span>
+            </button>
+          )}
+
+        </div>
+      )}
+
+      {/* Save Completion Bar (LNOS-06) */}
+      <AnimatePresence>
+        {showSaveCompletionBar && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 20 }}
+            className="fixed bottom-20 left-1/2 -translate-x-1/2 z-[85] bg-white rounded-2xl shadow-2xl border border-emerald-100 p-4 max-w-md w-full mx-4"
+          >
+            <div className="flex items-center justify-between mb-3 pb-2 border-b border-slate-100">
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center font-bold text-xs">✓</div>
+                <span className="font-bold text-slate-800 text-sm">Đã lưu an toàn</span>
+              </div>
+              <button onClick={() => setShowSaveCompletionBar(false)} className="text-slate-400 hover:text-slate-600 text-xs">✕</button>
+            </div>
+            <p className="text-xs text-slate-500 mb-3 font-medium">Bạn muốn làm gì tiếp?</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button 
+                onClick={() => setShowSaveCompletionBar(false)}
+                className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Tiếp tục chỉnh sửa
+              </button>
+              <button 
+                onClick={() => { setShowSaveCompletionBar(false); setActiveAppTab('card'); }}
+                className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Xem Preview
+              </button>
+              <button 
+                onClick={() => { setShowSaveCompletionBar(false); setActiveAppTab('export'); }}
+                className="px-3 py-2 bg-slate-50 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Xuất thiệp
+              </button>
+              <button 
+                onClick={() => { setShowSaveCompletionBar(false); handleGoHome(); }}
+                className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-xl text-xs font-bold transition-all"
+              >
+                Về Home
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Completion Screen Modal (LNOS-06) */}
+      <AnimatePresence>
+        {showCompletionScreen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="bg-white rounded-[32px] p-8 max-w-lg w-full shadow-2xl border border-slate-100 text-center relative overflow-hidden"
+            >
+              <div className="w-20 h-20 bg-rose-50 rounded-full flex items-center justify-center mx-auto mb-6 text-3xl shadow-inner border border-rose-100">
+                🎉
+              </div>
+              <h3 className="text-2xl font-serif font-black text-slate-900 mb-2">Thiệp của bạn đã hoàn thành!</h3>
+              <p className="text-xs text-slate-500 mb-8 leading-relaxed max-w-xs mx-auto">
+                Tác phẩm của bạn đã được lưu an toàn và sẵn sàng để chia sẻ hoặc in ấn.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                <button 
+                  onClick={() => { handleExportAction('PDF'); setShowCompletionScreen(false); }}
+                  className="py-3 px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <Download size={14} /> Xuất PDF
+                </button>
+                <button 
+                  onClick={() => { handleExportAction('PNG'); setShowCompletionScreen(false); }}
+                  className="py-3 px-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-bold text-xs uppercase tracking-wider transition-all shadow-md flex items-center justify-center gap-2"
+                >
+                  <Download size={14} /> Xuất PNG
+                </button>
+                <button 
+                  onClick={() => { alert("Đã sao chép liên kết chia sẻ thiệp!"); }}
+                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <Share2 size={14} /> Chia sẻ
+                </button>
+                <button 
+                  onClick={() => { setShowCompletionScreen(false); handleGoHome(); }}
+                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-2xl font-bold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2"
+                >
+                  <Home size={14} /> Về Home
+                </button>
+              </div>
+
+              <button 
+                onClick={() => { setShowCompletionScreen(false); setActiveAppTab('home'); }}
+                className="text-xs font-bold text-rose-600 hover:text-rose-700 transition-colors"
+              >
+                + Tạo thiệp mới
+              </button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Export Success Modal (LNOS-06) */}
+      <AnimatePresence>
+        {showExportSuccessModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="bg-white rounded-[32px] p-8 max-w-md w-full shadow-2xl border border-slate-100 text-center relative"
+            >
+              <div className="w-16 h-16 bg-emerald-50 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-5 border border-emerald-100 shadow-sm">
+                <Check size={28} />
+              </div>
+              <h3 className="text-xl font-bold text-slate-900 mb-1">✓ Xuất thành công</h3>
+              <p className="text-xs text-slate-400 mb-6">{exportedFileName} đã được tạo thành công.</p>
+
+              <div className="space-y-2">
+                <button 
+                  onClick={() => { alert(`Đang mở file: ${exportedFileName}`); setShowExportSuccessModal(false); }}
+                  className="w-full py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Mở tệp / Tải xuống
+                </button>
+                <button 
+                  onClick={() => { setShowExportSuccessModal(false); setActiveAppTab('card'); }}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Quay Preview
+                </button>
+                <button 
+                  onClick={() => { setShowExportSuccessModal(false); handleGoHome(); }}
+                  className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-xl font-bold text-xs uppercase tracking-wider transition-all"
+                >
+                  Về Home
+                </button>
+                <button 
+                  onClick={() => { setShowExportSuccessModal(false); setActiveAppTab('home'); }}
+                  className="w-full py-2 text-rose-600 hover:text-rose-700 text-xs font-bold transition-colors"
+                >
+                  Tạo thiệp mới
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Save Toast Notification */}
+      <AnimatePresence>
+        {showSaveToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.95 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 50, scale: 0.95 }}
+            className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[90] flex items-center gap-2 bg-slate-900 text-white px-4 py-2.5 rounded-xl shadow-xl border border-slate-800 font-bold text-xs uppercase tracking-wider"
+          >
+            <Check size={14} className="text-emerald-400" />
+            <span>Đã lưu dự án thành công</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
     <UniversalSearchOverlay
       isOpen={isCommandPaletteOpen}

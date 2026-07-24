@@ -72,8 +72,8 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({
               <FolderPlus size={20} />
             </div>
             <div>
-              <h3 className="font-bold text-base tracking-tight">Tạo Dự Án Mới</h3>
-              <p className="text-[11px] text-rose-100">Khởi tạo tài liệu sáng tạo trong Workspace</p>
+              <h3 className="font-bold text-base tracking-tight">Tạo Project Thiệp Mới</h3>
+              <p className="text-[11px] text-rose-100">Khởi tạo Project sáng tạo trong LoveNote Workspace</p>
             </div>
           </div>
           <button
@@ -225,7 +225,7 @@ export const NewProjectDialog: React.FC<NewProjectDialogProps> = ({
               className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-bold transition-all shadow-md shadow-rose-500/20 disabled:opacity-50 flex items-center gap-1.5 min-h-[40px]"
             >
               <Sparkles size={15} />
-              <span>Tạo Dự Án</span>
+              <span>Tạo Project Thiệp</span>
             </button>
           </div>
         </form>

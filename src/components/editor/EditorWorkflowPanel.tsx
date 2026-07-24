@@ -294,7 +294,16 @@ export const EditorWorkflowPanel: React.FC<EditorWorkflowPanelProps> = ({
 
   // 5. User Actions
   const handleStartWorkflow = async (customGoal?: string) => {
-    const goalToRun = customGoal || goalInput || 'Tạo bài viết kỷ niệm ý nghĩa kèm thơ và nhạc nền nhẹ nhàng';
+    const rawGoal = customGoal !== undefined ? customGoal : goalInput;
+    const goalToRun = (rawGoal || '').trim();
+
+    if (!goalToRun) {
+      setErrorMessage('Vui lòng nhập chủ đề hoặc yêu cầu sáng tạo cho tấm thiệp trước khi khởi chạy.');
+      setStage('Draft');
+      setIsLoading(false);
+      return;
+    }
+
     setGoalInput(goalToRun);
     setIsLoading(true);
     setErrorMessage(null);
@@ -611,26 +620,33 @@ export const EditorWorkflowPanel: React.FC<EditorWorkflowPanelProps> = ({
           <div className="p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-900 space-y-2">
             <div className="flex items-center gap-2 text-red-700 font-bold">
               <XCircle size={18} />
-              <span>Workflow Failed</span>
+              <span>Không thể hoàn tất tác vụ AI</span>
             </div>
-            <p className="text-[11px] text-red-700 bg-white/80 p-2 rounded border border-red-100">
-              {errorMessage || 'Workflow không thể hoàn tất tác vụ.'}
+            <p className="text-[11px] text-red-700 bg-white/80 p-2 rounded border border-red-100 font-medium">
+              {errorMessage || 'Tác vụ gặp sự cố hoặc gián đoạn kết nối.'}
             </p>
-            <div className="flex items-center gap-2 pt-1">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5 pt-1">
               <button
                 onClick={() => handleStartWorkflow()}
-                className="flex-1 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1"
+                className="py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1"
               >
                 <RotateCcw size={14} />
-                Retry Workflow
+                Thử lại
               </button>
               <button
                 onClick={() => {
-                  alert('Báo cáo lỗi thành công! Đội ngũ phát triển sẽ kiểm tra log.');
+                  setStage('Draft');
+                  setErrorMessage(null);
                 }}
-                className="py-1.5 px-3 rounded-lg bg-white border border-red-200 text-red-700 hover:bg-red-100 font-medium text-xs transition-all"
+                className="py-1.5 rounded-lg bg-white border border-red-200 text-slate-700 hover:bg-slate-100 font-semibold text-xs transition-all flex items-center justify-center gap-1"
               >
-                Report
+                Sửa chủ đề
+              </button>
+              <button
+                onClick={handleApplyToCanvas}
+                className="py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs transition-all flex items-center justify-center gap-1"
+              >
+                Mẫu có sẵn
               </button>
             </div>
           </div>

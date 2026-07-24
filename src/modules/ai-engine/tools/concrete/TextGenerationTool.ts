@@ -45,7 +45,7 @@ export class TextGenerationTool implements AITool {
 
   public validate(input: any): { isValid: boolean; error?: string } {
     if (!input || !input.prompt || input.prompt.trim() === '') {
-      return { isValid: false, error: 'Prompt is required' };
+      return { isValid: false, error: 'Vui lòng nhập chủ đề hoặc yêu cầu trước khi tạo nội dung.' };
     }
     return { isValid: true };
   }

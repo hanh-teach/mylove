@@ -1,6 +1,6 @@
 import React from 'react';
 
-export type AppTabType = 'home' | 'card' | 'editor' | 'assets' | 'memory' | 'timeline' | 'aistudio' | 'design-system' | 'project-dashboard' | 'people' | 'places' | 'graph' | 'knowledge' | 'automation' | 'collaboration' | 'sync' | 'plugins' | 'marketplace' | 'developer' | 'release' | 'rc' | 'stable' | 'mps' | 'completion';
+export type AppTabType = 'home' | 'card' | 'editor' | 'assets' | 'memory' | 'timeline' | 'aistudio' | 'design-system' | 'project-dashboard' | 'people' | 'places' | 'graph' | 'knowledge' | 'automation' | 'collaboration' | 'sync' | 'plugins' | 'marketplace' | 'developer' | 'release' | 'rc' | 'stable' | 'mps' | 'completion' | 'export';
 
 export interface NavigationItem {
   id: AppTabType | string;

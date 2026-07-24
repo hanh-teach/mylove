@@ -3,13 +3,11 @@ import {
   LayoutDashboard, 
   PenTool, 
   ImageIcon, 
-  Clock, 
   Wand2, 
   Download, 
-  Settings,
   ChevronLeft,
   Command,
-  Users
+  Eye
 } from 'lucide-react';
 
 import { AppTabType } from '../../types';
@@ -30,27 +28,18 @@ export const ProjectSidebar: React.FC<ProjectSidebarProps> = ({
   projectIcon
 }) => {
   const menuItems = [
-    { id: 'project-dashboard', label: 'Tổng quan', icon: <LayoutDashboard size={18} /> },
-    { id: 'editor', label: 'Nội dung', icon: <PenTool size={18} /> },
-    { id: 'assets', label: 'Media & Tài sản', icon: <ImageIcon size={18} /> },
-    { id: 'timeline', label: 'Dòng thời gian', icon: <Clock size={18} /> },
-    { id: 'aistudio', label: 'AI Assistant', icon: <Wand2 size={18} /> },
-    { id: 'collaboration', label: 'Cộng tác', icon: <Users size={18} /> },
-    { id: 'card', label: 'Xuất bản', icon: <Download size={18} /> },
-    { id: 'settings', label: 'Cài đặt', icon: <Settings size={18} /> },
+    { id: 'project-dashboard', label: '1. Thông tin (Details)', icon: <LayoutDashboard size={18} /> },
+    { id: 'aistudio', label: '2. AI Tạo thiệp (AI)', icon: <Wand2 size={18} /> },
+    { id: 'card', label: '3. Xem thử (Preview)', icon: <Eye size={18} /> },
+    { id: 'editor', label: '4. Chỉnh sửa (Editor)', icon: <PenTool size={18} /> },
+    { id: 'assets', label: '5. Album ảnh (Assets)', icon: <ImageIcon size={18} /> },
+    { id: 'export', label: '6. Xuất bản (Export)', icon: <Download size={18} /> },
   ];
 
   return (
     <div className="w-64 h-full bg-white border-r border-slate-100 flex flex-col">
       {/* Project Header */}
       <div className="p-6 border-b border-slate-50">
-        <button 
-          onClick={onBackToWorkspace}
-          className="flex items-center gap-1 text-slate-400 hover:text-slate-600 text-[10px] font-black uppercase tracking-widest mb-4 transition-colors"
-        >
-          <ChevronLeft size={12} />
-          Workspace
-        </button>
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-2xl bg-slate-50 flex items-center justify-center text-xl shadow-sm border border-slate-100">
             {projectIcon}

@@ -33,6 +33,7 @@ import {
 import { WorkspaceProvider, useWorkspace } from './WorkspaceContext';
 import { useProjectWorkspace } from '../../modules/workspace/WorkspaceContext';
 import { NewProjectDialog } from '../workspace/NewProjectDialog';
+import { FirstCardWizardModal } from '../card/FirstCardWizardModal';
 import { AppHeader } from '../layout/AppHeader';
 import { NavigationDrawer } from '../layout/NavigationDrawer';
 import { Sidebar } from '../layout/Sidebar';
@@ -63,7 +64,12 @@ interface ApplicationShellProps {
   onOpenNewMemory?: () => void;
   onOpenNewTimeline?: () => void;
   onOpenSettings?: () => void;
+  onOpenSearch?: () => void;
+  onGoHome?: () => void;
   children: React.ReactNode;
+  projectStatus?: 'clean' | 'modified' | 'saving' | 'error';
+  onManualSave?: () => void;
+  sidebarOverride?: React.ReactNode;
 }
 
 const ShellContent: React.FC<ApplicationShellProps> = ({
@@ -73,12 +79,18 @@ const ShellContent: React.FC<ApplicationShellProps> = ({
   onOpenNewMemory,
   onOpenNewTimeline,
   onOpenSettings,
+  onOpenSearch,
+  onGoHome,
   children,
+  projectStatus,
+  onManualSave,
+  sidebarOverride
 }) => {
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [aboutModalOpen, setAboutModalOpen] = useState<boolean>(false);
   const [isProjectDropdownOpen, setIsProjectDropdownOpen] = useState<boolean>(false);
   const [isNewProjectDialogOpen, setIsNewProjectDialogOpen] = useState<boolean>(false);
+  const [isCardWizardOpen, setIsCardWizardOpen] = useState<boolean>(false);
   const [isRenamingTitle, setIsRenamingTitle] = useState<boolean>(false);
   const [newTitleInput, setNewTitleInput] = useState<string>('');
   const [isNotificationOpen, setIsNotificationOpen] = useState<boolean>(false);
@@ -135,16 +147,29 @@ const ShellContent: React.FC<ApplicationShellProps> = ({
     <div className="min-h-screen flex w-full bg-slate-50 relative selection:bg-rose-500 selection:text-white pb-safe">
       {/* Sidebar for Desktop (≥ 1280px) */}
       <div className="hidden 2xl:flex w-[300px] shrink-0 border-r border-slate-200 bg-white">
-        <Sidebar activeTab={activeTab} onSelectTab={onSelectTab} />
+        {sidebarOverride || <Sidebar activeTab={activeTab} onSelectTab={onSelectTab} />}
       </div>
       
       <div className="flex flex-col flex-1 w-full min-w-0">
         {/* 1. Top Bar Header */}
         <AppHeader
-          title="LoveNote Workspace"
+          title={activeProject ? `${activeProject.icon || '📁'} ${activeProject.title}` : "LoveNote Workspace"}
+          isHome={activeTab === 'home'}
           onToggleMenu={() => setIsDrawerOpen(true)}
-          onOpenQuickActions={() => setIsNewProjectDialogOpen(true)}
+          onOpenQuickActions={() => setIsCardWizardOpen(true)}
           onOpenNotifications={() => setIsNotificationOpen(!isNotificationOpen)}
+          onOpenSearch={onOpenSearch}
+          onOpenSettings={onOpenSettings}
+          onGoHome={onGoHome}
+          activeProject={activeProject}
+          activeTab={activeTab}
+          onSelectTab={onSelectTab}
+          onRenameProject={renameProject}
+          onDuplicateProject={duplicateProject}
+          onArchiveProject={archiveProject}
+          onTrashProject={trashProject}
+          projectStatus={projectStatus}
+          onManualSave={onManualSave}
         />
 
         {/* 2. Main Content Area */}
@@ -154,22 +179,29 @@ const ShellContent: React.FC<ApplicationShellProps> = ({
       </div>
 
       {/* Mobile Bottom Navigation (Only visible on Tablet/Mobile) */}
-      <div className="lg:hidden">
-        <BottomNavigation activeTab={activeTab} onSelectTab={onSelectTab} />
-      </div>
+      {!sidebarOverride && (
+        <div className="lg:hidden">
+          <BottomNavigation activeTab={activeTab} onSelectTab={onSelectTab} />
+        </div>
+      )}
 
-      {/* New Project Modal */}
-      <NewProjectDialog
-        isOpen={isNewProjectDialogOpen}
-        onClose={() => setIsNewProjectDialogOpen(false)}
-        onCreated={() => {
-          onSelectTab('editor');
+      {/* FSC-01 First Card Creation Wizard Modal */}
+      <FirstCardWizardModal
+        isOpen={isCardWizardOpen}
+        onClose={() => setIsCardWizardOpen(false)}
+        onNavigateHome={() => {
+          setIsCardWizardOpen(false);
+          onSelectTab('home');
+        }}
+        onOpenInStudioEditor={() => {
+          setIsCardWizardOpen(false);
+          onSelectTab('card');
         }}
       />
 
       {/* 3. Workspace Launcher Menu Drawer */}
       <NavigationDrawer isOpen={isDrawerOpen} onClose={() => setIsDrawerOpen(false)}>
-         <Sidebar activeTab={activeTab} onSelectTab={onSelectTab} />
+         {sidebarOverride || <Sidebar activeTab={activeTab} onSelectTab={onSelectTab} />}
       </NavigationDrawer>
 
       {/* About Modal */}
@@ -225,7 +257,7 @@ const ShellContent: React.FC<ApplicationShellProps> = ({
         isOpen={isNewProjectDialogOpen}
         onClose={() => setIsNewProjectDialogOpen(false)}
         onCreated={() => {
-          onSelectTab('editor');
+          onSelectTab('project-dashboard');
         }}
       />
     </div>

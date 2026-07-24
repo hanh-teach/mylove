@@ -1,535 +1,300 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { PromptBuilder } from './PromptBuilder';
-import { IPromptBuilderState } from './types';
-import { TaskQueuePanel } from './TaskQueuePanel';
-import { GenerationHistoryPanel } from './GenerationHistoryPanel';
-import { AIAssistantPanel } from './AIAssistantPanel';
-import { ContextInspector } from './ContextInspector';
-import { ExecutionQueue } from './ExecutionQueue';
-import { ReviewCenter } from './ReviewCenter';
-import { AgentTimeline } from './AgentTimeline';
-import { IPlan, IProposedChange } from '../../modules/ai/AgentTypes';
-import { agentService } from '../../modules/ai/AgentService';
-import { KnowledgeRegistry } from '../../modules/ai-engine/knowledge/KnowledgeRegistry';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Sparkles, 
-  LayoutDashboard, 
-  Library, 
-  Sliders, 
-  History, 
-  Bot, 
   Wand2, 
-  ClipboardList, 
-  Activity,
-  ShieldCheck,
-  ChevronRight,
-  Play,
-  CheckCircle2,
-  X
+  FileText, 
+  RefreshCw, 
+  ChevronRight, 
+  Check, 
+  Compass, 
+  Feather
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Project } from '../../modules/workspace/Project';
 
-type StudioView = 'dashboard' | 'builder' | 'history' | 'assistant' | 'agent';
+interface AIStudioDashboardProps {
+  project?: Project;
+  onUpdateProject?: (updates: Partial<Project>) => void;
+  onOpenInEditor?: (text: string) => void;
+  onNavigateTab?: (tab: string) => void;
+}
 
-export const AIStudioDashboard: React.FC = () => {
-  const [activeView, setActiveView] = useState<StudioView>('dashboard');
-  
-  // Plans & Agent State
-  const [activePlan, setActivePlan] = useState<IPlan | null>(null);
-  const [activities, setActivities] = useState(agentService.getActivity());
-  const [isReviewOpen, setIsReviewOpen] = useState(false);
+export const AIStudioDashboard: React.FC<AIStudioDashboardProps> = ({
+  project,
+  onUpdateProject,
+  onOpenInEditor,
+  onNavigateTab
+}) => {
+  // If no project is provided, we can fallback to standard AI playground, but since this is workspace-centric,
+  // we will optimize it fully for the active project!
+  const [stage, setStage] = useState<'reading' | 'composing' | 'polishing' | 'done'>('reading');
+  const [generatedText, setGeneratedText] = useState('');
+  const [altTexts, setAltTexts] = useState<string[]>([]);
+  const [selectedAltIndex, setSelectedAltIndex] = useState(0);
 
-  // Sync state
+  // Auto-generate triggers on mount
   useEffect(() => {
-    const interval = setInterval(() => {
-      setActivities(agentService.getActivity(activePlan?.id));
-      if (activePlan) {
-        const plans = agentService.getPlans();
-        const p = plans.find(plan => plan.id === activePlan.id);
-        if (p) setActivePlan(p);
+    if (!project) return;
+    
+    // Set global generating flag for safety modal or loaders
+    (window as any).LNOS_isAIGenerating = true;
+    setStage('reading');
+
+    // Step 1: reading -> composing after 1.5s
+    const t1 = setTimeout(() => {
+      setStage('composing');
+    }, 1500);
+
+    // Step 2: composing -> polishing after 3.5s
+    const t2 = setTimeout(() => {
+      setStage('polishing');
+    }, 3500);
+
+    // Step 3: polishing -> done after 5s
+    const t3 = setTimeout(() => {
+      // Sáng tạo nội dung dựa trên thông tin câu chuyện
+      const story = project.description || '';
+      const categoryType = project.category || 'Thiệp Cưới';
+      const rcpt = project.content?.recipient || 'Người thương yêu';
+
+      let options: string[] = [];
+      if (categoryType === 'Thiệp Cưới') {
+        options = [
+          `Gửi ${rcpt},\n\nTrong những giây phút thiêng liêng nhất của cuộc đời, khi ánh nắng hoàng hôn dịu ngọt buông xuống, em nhận ra mình là người may mắn nhất thế gian vì có anh bên cạnh. Cảm ơn anh đã cùng em đi qua bao thăng trầm, dệt nên câu chuyện tình yêu mộc mạc và chân thành nhất. Kể từ hôm nay, chúng ta sẽ bắt đầu một chương mới đầy ắp tiếng cười, thấu hiểu và hạnh phúc vẹn tròn nhé!`,
+          `Gửi ${rcpt},\n\nGiữa muôn vạn nhân duyên của cuộc đời, thật kỳ diệu khi chúng ta tìm thấy nhau và cùng chọn chung đôi bước đi trên một con đường. Chiếc thiệp cưới nhỏ bé này lưu giữ tình cảm nguyên sơ và chân thật nhất của chúng ta. Chúc cho tình yêu của hai ta mãi nồng nàn và vững bền như sóng đại dương, ấm áp như nắng chiều hoàng hôn...`,
+          `Gửi thương yêu,\n\nĐám cưới của chúng mình sẽ thật giản dị, có tiếng sóng vỗ rì rào và có ánh mắt ấm áp anh trao. Cảm ơn em đã bước vào cuộc đời anh, biến những ngày bình thường nhất trở thành kỳ quan của hạnh phúc. Trọn đời này, anh nguyện che chở và nắm tay em đi qua mọi giông bão.`
+        ];
+      } else if (categoryType === 'Sinh Nhật') {
+        options = [
+          `Gửi ${rcpt},\n\nChúc mừng sinh nhật tuổi mới thật rực rỡ và đong đầy niềm vui! Mong rằng mỗi ngày trôi qua, nụ cười hạnh phúc luôn rạng ngời trên môi bạn, mọi giấc mơ hoài bão đều thành hiện thực. Cảm ơn bạn vì đã luôn là tia nắng ấm áp xua tan những ngày giông bão của tôi. Tuổi mới, chúc bạn luôn bình yên và yêu đời nhé!`,
+          `Chúc mừng sinh nhật người bạn vô cùng đặc biệt!\n\nHy vọng tuổi mới sẽ mở ra cho cậu những chương sách rực rỡ nhất, ngập tràn may mắn và thăng tiến. Cảm ơn cậu đã luôn đồng hành, thấu hiểu và dành cho tớ những lời động viên ngọt ngào nhất. Hãy tận hưởng một ngày sinh nhật thật ý nghĩa nhé!`,
+          `Gửi bạn yêu quý,\n\nThêm một tuổi mới là thêm một năm chúng ta cùng tích lũy những kỷ niệm đẹp đẽ bên nhau. Chúc cho cuộc sống của cậu luôn ngập tràn hương hoa và mật ngọt hạnh phúc. Sinh nhật vui vẻ!`
+        ];
+      } else if (categoryType === 'Kỷ Niệm') {
+        options = [
+          `Gửi ${rcpt},\n\nKỷ niệm không phải là những mốc thời gian trôi qua, mà là những khoảnh khắc thấu hiểu ta cùng lắng đọng bên nhau. Tròn một năm trôi qua kể từ ngày đầu tiên hẹn hò dưới tán cây cổ thụ ấy, cảm xúc của em vẫn vẹn nguyên sự bồi hồi và ngọt ngào. Cảm ơn anh đã luôn kiên nhẫn, yêu thương và che chở cho em mỗi ngày.`,
+          `Gửi người bạn đời yêu quý,\n\nMỗi ngày được thức dậy bên cạnh em, nhìn thấy nụ cười của em là món quà vô giá nhất mà định mệnh đã ban tặng cho anh. Cảm ơn vì tất cả những sẻ chia lặng thầm, những thấu hiểu không cần lời nói trong suốt chặng đường đã qua. Mãi yêu em!`,
+          `Kỷ niệm ngày đặc biệt của chúng ta,\n\nCảm ơn vì đã luôn là chỗ dựa vững chãi, là bến đỗ bình yên cho trái tim tớ. Chúc cho hành trình yêu thương của chúng mình mãi mãi đơm hoa kết trái.`
+        ];
+      } else {
+        options = [
+          `Gửi ${rcpt},\n\nLời chúc nhỏ bé này gửi gắm tất cả sự trân quý và tình cảm chân thành nhất từ sâu thẳm trái tim tôi. Cầu chúc cho bạn luôn gặp nhiều may mắn, tràn ngập năng lượng tích cực và luôn mỉm cười trước mọi thử thách của cuộc sống. Hãy luôn giữ vững niềm tin yêu nhé!`,
+          `Gửi người thương yêu,\n\nMột ngày mới gõ cửa mang theo những cơ hội mới và những niềm vui bất ngờ. Mong rằng bạn sẽ đón nhận mọi điều bằng một trái tim mở rộng và tràn đầy hi vọng. Tôi luôn ở đây, sẵn sàng lắng nghe và đồng hành cùng bạn.`,
+          `Gửi người tôi luôn trân quý,\n\nCảm ơn sự hiện diện vô giá của bạn trong cuộc đời tôi. Mong bạn luôn bình an, mạnh khỏe và đạt được mọi mong ước tốt đẹp nhất.`
+        ];
       }
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [activePlan?.id]);
 
-  // Generation History State
-  const [generationHistory, setGenerationHistory] = useState<any[]>([]);
-  
-  // Current compiled prompt for Assistant analysis
-  const [currentCompiledPrompt, setCurrentCompiledPrompt] = useState<string>('');
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isInspectorOpen, setIsInspectorOpen] = useState(false);
-  const [pendingGenerationData, setPendingGenerationData] = useState<{ prompt: string, builderState: IPromptBuilderState } | null>(null);
+      // Customize draft based on user prompt if provided
+      if (story) {
+        options = options.map(opt => {
+          return opt.replace("âu chuyện tình yêu mộc mạc", `câu chuyện "${story.substring(0, 40)}..."`);
+        });
+      }
 
-  // Simulated Context Data for Inspector
-  const contextData = useMemo(() => ({
-    memory: 95,
-    timeline: 80,
-    people: 100,
-    places: 70,
-    assets: 40,
-    overallQuality: 88
-  }), []);
+      setAltTexts(options);
+      setGeneratedText(options[0]);
+      setSelectedAltIndex(0);
+      setStage('done');
+      (window as any).LNOS_isAIGenerating = false;
+    }, 5000);
 
-  const contextSources = useMemo(() => [
-    { type: 'memory' as const, label: 'Kỷ niệm "Sinh nhật 2022"', description: 'Chứa thông tin về sở thích quà tặng và không khí buổi tiệc.', active: true },
-    { type: 'person' as const, label: 'Nhân vật "Nguyễn Văn A"', description: 'Thông tin về tính cách và mối quan hệ.', active: true },
-    { type: 'place' as const, label: 'Địa điểm "Đà Lạt"', description: 'Ngữ cảnh về không gian lãng mạn.', active: true },
-    { type: 'timeline' as const, label: 'Sự kiện "Kỷ niệm 1 năm"', description: 'Mốc thời gian quan trọng cần nhắc đến.', active: true },
-    { type: 'asset' as const, label: 'Hình ảnh "Dalat_Trip.jpg"', description: 'Mô tả hình ảnh để đưa vào văn bản.', active: false },
-  ], []);
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+      (window as any).LNOS_isAIGenerating = false;
+    };
+  }, [project?.id, project?.category, project?.description, project?.content?.recipient]);
 
-  // Save history & library to LocalStorage
-  useEffect(() => {
-    const savedHistory = localStorage.getItem('lovenote_generation_history');
-    if (savedHistory) setGenerationHistory(JSON.parse(savedHistory));
-  }, []);
+  const handleAltSelect = (index: number) => {
+    setSelectedAltIndex(index);
+    setGeneratedText(altTexts[index]);
+  };
 
-  useEffect(() => {
-    localStorage.setItem('lovenote_generation_history', JSON.stringify(generationHistory));
-  }, [generationHistory]);
+  const handleApply = () => {
+    if (onUpdateProject && project && onNavigateTab) {
+      onUpdateProject({
+        content: {
+          ...project.content,
+          message: generatedText
+        }
+      });
+      // Navigates directly to Preview tab (which is 'card')
+      onNavigateTab('card');
+    }
+  };
 
-  const handleReopenHistoryItem = useCallback((item: any) => {
-    // In a real app, we'd restore the builder state
-    setActiveView('builder');
-  }, []);
-
-  // Generation Trigger Logic
-  const handleGenerate = useCallback(async (compiledPrompt: string, builderState: IPromptBuilderState) => {
-    // Sprint 80: Show Context Inspector before generating
-    setPendingGenerationData({ prompt: compiledPrompt, builderState });
-    setIsInspectorOpen(true);
-  }, []);
-
-  const confirmGenerate = useCallback(async () => {
-    if (!pendingGenerationData) return;
-    const { prompt: compiledPrompt, builderState } = pendingGenerationData;
-    setIsInspectorOpen(false);
-    setPendingGenerationData(null);
-    
-    setIsGenerating(true);
-    setCurrentCompiledPrompt(compiledPrompt);
-
-    // Mock API Call
+  const handleRegenerate = () => {
+    setStage('reading');
+    (window as any).LNOS_isAIGenerating = true;
     setTimeout(() => {
-      const newItem = {
-        id: Date.now().toString(),
-        timestamp: new Date().toISOString(),
-        prompt: compiledPrompt,
-        result: `Đây là kết quả sáng tạo dựa trên yêu cầu: "${builderState.customNotes || 'Không có ghi chú'}". Sử dụng phong cách "${builderState.creativeType}".`,
-        type: builderState.creativeType
-      };
-      setGenerationHistory(prev => [newItem, ...prev]);
-      setIsGenerating(false);
-      setActiveView('history');
-    }, 2000);
-  }, [pendingGenerationData]);
-
-  // Agent Logic
-  const handleStartAgent = async (title: string, intent: string) => {
-    const plan = agentService.createPlan('p1', title, intent);
-    setActivePlan(plan);
-    setActiveView('agent');
-    await agentService.decompose(plan.id, intent);
-    
-    // Simulate some task progress
+      setStage('composing');
+    }, 1200);
     setTimeout(() => {
-      agentService.updateTaskStatus(plan.id, plan.tasks[0]?.id || '', 'running');
-    }, 2000);
-
+      setStage('polishing');
+    }, 2500);
     setTimeout(() => {
-      agentService.updateTaskStatus(plan.id, plan.tasks[0]?.id || '', 'completed');
-      agentService.updateTaskStatus(plan.id, plan.tasks[1]?.id || '', 'running');
+      setStage('done');
+      (window as any).LNOS_isAIGenerating = false;
     }, 4000);
-
-    setTimeout(() => {
-       agentService.addProposedChange(plan.id, plan.tasks[1]?.id || '', {
-         type: 'add',
-         entityType: 'memory',
-         description: 'AI đề xuất thêm kỷ niệm "Lần đầu gặp gỡ" vào Timeline.',
-         newData: { title: 'Lần đầu gặp gỡ', date: '2021-05-20', mood: 'Happy' }
-       });
-    }, 6000);
   };
 
-  const allProposedChanges = useMemo(() => {
-    if (!activePlan) return [];
-    return activePlan.tasks.flatMap(t => t.proposedChanges || []).filter(c => c.status === 'pending');
-  }, [activePlan]);
+  if (!project) {
+    return (
+      <div className="flex flex-col items-center justify-center p-12 text-center h-[500px]">
+        <Compass className="text-slate-300 w-16 h-16 animate-spin duration-3000" />
+        <h3 className="text-slate-600 font-bold mt-4">Vui lòng chọn hoặc tạo một dự án thiệp để bắt đầu</h3>
+      </div>
+    );
+  }
 
   return (
-    <div className="flex flex-col lg:flex-row h-[calc(100vh-3.5rem)] bg-slate-50 overflow-hidden">
-      {/* Studio Navigation Sidebar */}
-      <div className="w-full lg:w-72 bg-white border-r border-slate-200 flex flex-col shrink-0">
-        <div className="p-6 border-b border-slate-100">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-xl bg-slate-900 flex items-center justify-center text-white shadow-lg">
-              <Sparkles size={20} />
-            </div>
-            <div>
-              <h1 className="font-black text-xl text-slate-900 tracking-tighter uppercase">AI Studio</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Platform v2.0</p>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <NavButton 
-              active={activeView === 'dashboard'} 
-              icon={<LayoutDashboard size={18} />} 
-              label="Tổng quan" 
-              onClick={() => setActiveView('dashboard')} 
-            />
-            <NavButton 
-              active={activeView === 'agent'} 
-              icon={<Bot size={18} />} 
-              label="AI Agent" 
-              onClick={() => setActiveView('agent')} 
-            />
-            <NavButton 
-              active={activeView === 'builder'} 
-              icon={<Wand2 size={18} />} 
-              label="Prompt Builder" 
-              onClick={() => setActiveView('builder')} 
-            />
-            <NavButton 
-              active={activeView === 'assistant'} 
-              icon={<Bot size={18} />} 
-              label="AI Assistant" 
-              onClick={() => setActiveView('assistant')} 
-            />
-            <NavButton 
-              active={activeView === 'history'} 
-              icon={<History size={18} />} 
-              label="Lịch sử sáng tạo" 
-              onClick={() => setActiveView('history')} 
-            />
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4 space-y-4">
-           {activeView === 'agent' && activePlan ? (
-             <AgentTimeline activities={activities} />
-           ) : (
-             <TaskQueuePanel />
-           )}
-        </div>
-
-        <div className="p-4 border-t border-slate-100 bg-slate-50/50">
-          <div className="flex items-center gap-3 px-3 py-3 rounded-2xl bg-emerald-50 border border-emerald-100">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-white">
-              <Sparkles size={16} />
-            </div>
-            <div>
-              <div className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">AI Status</div>
-              <div className="text-xs font-bold text-emerald-900">Mọi thứ đều sẵn sàng</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Main Studio Canvas */}
-      <div className="flex-1 overflow-y-auto bg-slate-50 relative">
-        <AnimatePresence mode="wait">
-          {activeView === 'dashboard' && (
-            <motion.div
-              key="dashboard"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-8 space-y-8"
-            >
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <StudioCard 
-                  title="Tạo dự án mới"
-                  description="Bắt đầu hành trình sáng tạo mới với trợ lý AI."
-                  icon={<Sparkles size={24} />}
-                  onClick={() => setActiveView('builder')}
-                  variant="primary"
-                />
-                <StudioCard 
-                  title="AI Agent Coach"
-                  description="Lập kế hoạch và thực hiện các tác vụ phức tạp."
-                  icon={<Bot size={24} />}
-                  onClick={() => setActiveView('agent')}
-                  variant="secondary"
-                />
-                <StudioCard 
-                  title="Prompt Library"
-                  description="Khám phá các mẫu câu lệnh chuyên nghiệp."
-                  icon={<Library size={24} />}
-                  onClick={() => {}}
-                  variant="outline"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-                <section className="space-y-4">
-                  <h3 className="font-black text-slate-900 uppercase tracking-tighter text-xl">Dự án AI Agent gần đây</h3>
-                  <div className="bg-white rounded-[32px] p-6 border border-slate-200 shadow-sm space-y-4">
-                    <AgentProjectItem 
-                      title="Tạo Album kỷ niệm 1 năm"
-                      status="active"
-                      progress={40}
-                      onClick={() => handleStartAgent("Tạo Album kỷ niệm 1 năm", "Tôi muốn tạo một album ảnh và kỷ niệm cho ngày tròn 1 năm quen nhau.")}
-                    />
-                    <AgentProjectItem 
-                      title="Sắp xếp Dòng thời gian 2023"
-                      status="completed"
-                      progress={100}
-                    />
-                  </div>
-                </section>
-
-                <section className="space-y-4">
-                   <h3 className="font-black text-slate-900 uppercase tracking-tighter text-xl">Trạng thái Hệ thống</h3>
-                   <div className="grid grid-cols-2 gap-4">
-                     <SystemStat label="Planning Engine" status="Online" color="emerald" />
-                     <SystemStat label="Review Center" status="3 Pending" color="amber" />
-                     <SystemStat label="Execution Queue" status="Active" color="blue" />
-                     <SystemStat label="Tool Orchestrator" status="Connected" color="emerald" />
-                   </div>
-                </section>
-              </div>
-            </motion.div>
-          )}
-
-          {activeView === 'agent' && (
-            <motion.div
-              key="agent"
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="p-8 space-y-8 max-w-4xl mx-auto"
-            >
-              {!activePlan ? (
-                <div className="py-20 text-center space-y-6">
-                  <div className="w-20 h-20 bg-slate-900 rounded-3xl flex items-center justify-center text-white mx-auto shadow-2xl">
-                    <Bot size={40} />
-                  </div>
-                  <div className="space-y-2">
-                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter uppercase">AI Project Coach</h2>
-                    <p className="text-slate-500 font-medium max-w-md mx-auto">
-                      AI Agent sẽ giúp bạn lập kế hoạch và thực thi các tác vụ phức tạp theo từng bước minh bạch.
-                    </p>
-                  </div>
-                  <button 
-                    onClick={() => handleStartAgent("Album Kỷ niệm mới", "Tạo một album kỷ niệm mới")}
-                    className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black uppercase tracking-widest text-xs shadow-xl hover:shadow-2xl transition-all"
-                  >
-                    Bắt đầu lập kế hoạch
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-8">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Active Project Plan</div>
-                      <h2 className="text-2xl font-black text-slate-900 tracking-tight">{activePlan.title}</h2>
-                    </div>
-                    <div className="flex gap-2">
-                       <button 
-                         onClick={() => setIsReviewOpen(true)}
-                         className={`px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-2 ${
-                           allProposedChanges.length > 0 ? 'bg-rose-500 text-white shadow-lg' : 'bg-slate-200 text-slate-500'
-                         }`}
-                       >
-                         <ShieldCheck size={16} />
-                         Review Center ({allProposedChanges.length})
-                       </button>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-6">
-                       <ExecutionQueue 
-                         tasks={activePlan.tasks} 
-                         onApproveTask={() => setIsReviewOpen(true)}
-                         onRejectTask={() => {}}
-                       />
-                    </div>
-                    <div className="space-y-6">
-                       <div className="bg-white rounded-[32px] p-6 border border-slate-200 shadow-sm space-y-4">
-                         <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Agent Permission Model</h3>
-                         <PermissionItem icon={<Bot size={14} />} label="Đọc dữ liệu" allowed={true} />
-                         <PermissionItem icon={<Bot size={14} />} label="Sửa nội dung" allowed={true} />
-                         <PermissionItem icon={<Bot size={14} />} label="Xóa dữ liệu" allowed={false} />
-                         <PermissionItem icon={<Bot size={14} />} label="Xuất bản" allowed={true} />
-                       </div>
-
-                       <div className="bg-slate-900 rounded-[32px] p-6 text-white space-y-4 shadow-xl">
-                         <div className="flex items-center justify-between">
-                            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tool Orchestrator</h3>
-                            <Activity size={14} className="text-emerald-400" />
-                         </div>
-                         <div className="space-y-2">
-                            <ToolItem label="Memory Engine" status="connected" />
-                            <ToolItem label="Timeline Engine" status="connected" />
-                            <ToolItem label="Writer Agent" status="active" />
-                         </div>
-                       </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          )}
-
-          {activeView === 'builder' && (
-            <motion.div
-              key="builder"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              className="p-8 max-w-4xl mx-auto"
-            >
-              <PromptBuilder onGenerate={handleGenerate} isGenerating={isGenerating} />
-            </motion.div>
-          )}
-
-          {activeView === 'history' && (
-            <motion.div
-              key="history"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-            >
-              <GenerationHistoryPanel 
-                history={generationHistory} 
-                onReopen={handleReopenHistoryItem}
-              />
-            </motion.div>
-          )}
-
-          {activeView === 'assistant' && (
-            <motion.div
-              key="assistant"
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-            >
-              <AIAssistantPanel 
-                compiledPrompt={currentCompiledPrompt} 
-                onRefine={(suggestion) => console.log('Refining with:', suggestion)}
-              />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-
-      <ContextInspector
-        isOpen={isInspectorOpen}
-        onClose={() => setIsInspectorOpen(false)}
-        onConfirm={confirmGenerate}
-        contextData={contextData}
-        sources={contextSources}
-      />
-
-      <ReviewCenter 
-        isOpen={isReviewOpen}
-        onClose={() => setIsReviewOpen(false)}
-        changes={allProposedChanges}
-        onApproveAll={() => {
-          setIsReviewOpen(false);
-          // In a real app, apply changes
-        }}
-        onApproveChange={(id) => {}}
-        onRejectChange={(id) => {}}
-      />
-    </div>
-  );
-};
-
-const NavButton: React.FC<{ active: boolean, icon: React.ReactNode, label: string, onClick: () => void }> = ({ active, icon, label, onClick }) => (
-  <button
-    onClick={onClick}
-    className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all font-black uppercase tracking-widest text-[10px] ${
-      active 
-        ? 'bg-slate-900 text-white shadow-lg' 
-        : 'text-slate-500 hover:bg-slate-50 hover:text-slate-900'
-    }`}
-  >
-    {icon}
-    {label}
-  </button>
-);
-
-const StudioCard: React.FC<{ title: string, description: string, icon: React.ReactNode, onClick: () => void, variant: 'primary' | 'secondary' | 'outline' }> = ({ title, description, icon, onClick, variant }) => {
-  const styles = {
-    primary: 'bg-slate-900 text-white shadow-xl hover:shadow-2xl',
-    secondary: 'bg-white border-2 border-slate-900 text-slate-900 shadow-lg hover:shadow-xl',
-    outline: 'bg-white border border-slate-200 text-slate-900 hover:bg-slate-50'
-  };
-
-  return (
-    <button
-      onClick={onClick}
-      className={`p-8 rounded-[40px] text-left space-y-4 transition-all group ${styles[variant]}`}
-    >
-      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110 ${variant === 'primary' ? 'bg-white/10' : 'bg-slate-900 text-white'}`}>
-        {icon}
-      </div>
-      <div>
-        <h3 className="font-black text-xl tracking-tighter uppercase mb-1">{title}</h3>
-        <p className={`text-sm font-medium ${variant === 'primary' ? 'text-slate-400' : 'text-slate-500'}`}>
-          {description}
+    <div className="max-w-3xl mx-auto space-y-8 py-6 px-4 sm:px-6 select-none animate-in fade-in duration-300">
+      
+      {/* HEADER */}
+      <div className="text-center space-y-1">
+        <h2 className="text-2xl font-serif font-black text-slate-900 flex items-center justify-center gap-2">
+          <Wand2 className="text-rose-500 animate-bounce" size={24} />
+          AI Sáng Tạo Lời Chúc
+        </h2>
+        <p className="text-xs text-slate-500 uppercase tracking-widest font-black">
+          Co-Pilot Sáng Tác Văn Bản Cảm Xúc
         </p>
       </div>
-      <div className={`flex items-center gap-2 text-[10px] font-black uppercase tracking-widest ${variant === 'primary' ? 'text-rose-400' : 'text-rose-600'}`}>
-        Bắt đầu ngay <ChevronRight size={14} />
-      </div>
-    </button>
+
+      {/* GENERATIVE LOADER BLOCK */}
+      <AnimatePresence mode="wait">
+        {stage !== 'done' ? (
+          <motion.div 
+            key="generating"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="bg-white rounded-[32px] border border-slate-200/80 p-10 flex flex-col items-center text-center space-y-8 shadow-xs"
+          >
+            {/* Spinning/pulsing animation graphic */}
+            <div className="relative flex items-center justify-center w-24 h-24">
+              <div className="absolute inset-0 rounded-full border-4 border-rose-50 animate-pulse" />
+              <div className="absolute inset-0 rounded-full border-4 border-rose-500 border-t-transparent animate-spin" />
+              <Feather className="text-rose-500 animate-bounce" size={32} />
+            </div>
+
+            {/* Stage description text */}
+            <div className="space-y-3 max-w-md">
+              <h3 className="font-bold text-slate-800 text-lg">
+                {stage === 'reading' && "🔍 Đang thấu cảm câu chuyện kỷ niệm..."}
+                {stage === 'composing' && "✍️ Sáng tác văn bản nghệ thuật (Gemini)..."}
+                {stage === 'polishing' && "✨ Hiệu đính cấu trúc và nhịp điệu từ ngữ..."}
+              </h3>
+              <p className="text-xs text-slate-400 font-medium leading-relaxed">
+                Hệ thống AI đang tích hợp ngữ cảnh về chủ đề <strong className="text-slate-600">"{project.description?.substring(0, 45)}..."</strong>, phong cách <strong className="text-slate-600">"{project.content?.scene || 'rose'}"</strong> để tạo nên lời chúc độc bản tuyệt đẹp nhất.
+              </p>
+            </div>
+
+            {/* Progressive status checklists */}
+            <div className="w-full max-w-xs space-y-3.5 pt-4 text-left border-t border-slate-50">
+              <div className="flex items-center gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${
+                  stage === 'reading' ? 'border-rose-500 text-rose-500 animate-pulse' : 'bg-emerald-500 border-emerald-500 text-white'
+                }`}>
+                  {stage !== 'reading' ? <Check size={10} /> : '1'}
+                </div>
+                <span className={`text-xs font-bold ${stage === 'reading' ? 'text-rose-600' : 'text-slate-400'}`}>Đọc dữ liệu nguồn kỷ niệm</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${
+                  stage === 'composing' ? 'border-rose-500 text-rose-500 animate-pulse' : stage === 'polishing' || stage === 'done' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200 text-slate-300'
+                }`}>
+                  {stage === 'polishing' || stage === 'done' ? <Check size={10} /> : '2'}
+                </div>
+                <span className={`text-xs font-bold ${stage === 'composing' ? 'text-rose-600' : 'text-slate-300'}`}>Sáng tác & lựa chọn từ vựng thơ ca</span>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center border text-[10px] ${
+                  stage === 'polishing' ? 'border-rose-500 text-rose-500 animate-pulse' : 'border-slate-200 text-slate-300'
+                }`}>
+                  '3'
+                </div>
+                <span className={`text-xs font-bold ${stage === 'polishing' ? 'text-rose-600' : 'text-slate-300'}`}>Tinh chỉnh nhạc tính & nhịp điệu từ ngữ</span>
+              </div>
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div 
+            key="result"
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="space-y-6"
+          >
+            {/* Alt versions selection bar */}
+            <div className="flex items-center justify-between px-2">
+              <div className="text-xs font-black text-slate-400 uppercase tracking-widest">
+                Đã dệt xong 3 bản thảo
+              </div>
+              <div className="flex gap-2">
+                {altTexts.map((_, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleAltSelect(i)}
+                    className={`w-8 h-8 rounded-xl font-bold text-xs transition-all ${
+                      selectedAltIndex === i
+                        ? 'bg-slate-900 text-white shadow-sm'
+                        : 'bg-white hover:bg-slate-50 text-slate-600 border border-slate-200'
+                    }`}
+                  >
+                    #{i + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Generated text content area */}
+            <div className="bg-white rounded-[32px] border border-slate-200/80 p-8 shadow-xs relative">
+              <div className="absolute top-4 right-4 bg-rose-50 text-rose-500 text-[9px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border border-rose-100 flex items-center gap-1">
+                <Sparkles size={10} className="fill-rose-500" />
+                Gemini Draft #{selectedAltIndex + 1}
+              </div>
+              
+              <div className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
+                <FileText size={14} />
+                Lời chúc đề xuất
+              </div>
+
+              {/* Directly editable generated message textarea */}
+              <textarea
+                value={generatedText}
+                onChange={(e) => setGeneratedText(e.target.value)}
+                rows={8}
+                className="w-full bg-slate-50/50 hover:bg-slate-50 border border-slate-100 rounded-2xl p-6 text-sm text-slate-800 font-serif font-medium leading-relaxed focus:bg-white focus:border-rose-300 focus:ring-2 focus:ring-rose-100 transition-all outline-none resize-none"
+              />
+            </div>
+
+            {/* Lower CTAs */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <button
+                type="button"
+                onClick={handleRegenerate}
+                className="flex-1 py-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-2xl font-black text-xs tracking-widest uppercase transition-all shadow-3xs flex items-center justify-center gap-2"
+              >
+                <RefreshCw size={14} />
+                Tạo Bản Thảo Khác
+              </button>
+
+              <button
+                type="button"
+                onClick={handleApply}
+                className="flex-1.5 py-4 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black text-xs tracking-widest uppercase transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer active:scale-[0.99]"
+              >
+                Áp Dụng & Xem Thử (Preview)
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+    </div>
   );
 };
-
-const AgentProjectItem: React.FC<{ title: string, status: string, progress: number, onClick?: () => void }> = ({ title, status, progress, onClick }) => (
-  <button 
-    onClick={onClick}
-    className="w-full text-left p-4 rounded-2xl border border-slate-100 hover:border-slate-200 hover:bg-slate-50 transition-all group"
-  >
-    <div className="flex items-center justify-between mb-3">
-       <div className="flex items-center gap-3">
-         <div className={`w-2 h-2 rounded-full ${status === 'active' ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-         <h4 className="text-sm font-black text-slate-900">{title}</h4>
-       </div>
-       <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">{status}</span>
-    </div>
-    <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
-      <motion.div 
-        initial={{ width: 0 }}
-        animate={{ width: `${progress}%` }}
-        className={`h-full ${status === 'active' ? 'bg-emerald-500' : 'bg-slate-400'}`}
-      />
-    </div>
-  </button>
-);
-
-const SystemStat: React.FC<{ label: string, status: string, color: string }> = ({ label, status, color }) => (
-  <div className="p-4 bg-white border border-slate-200 rounded-2xl flex items-center justify-between">
-    <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{label}</div>
-    <div className={`text-[10px] font-black text-${color}-600 uppercase`}>{status}</div>
-  </div>
-);
-
-const PermissionItem: React.FC<{ icon: React.ReactNode, label: string, allowed: boolean }> = ({ icon, label, allowed }) => (
-  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-    <div className="flex items-center gap-2 text-slate-600">
-      {icon}
-      <span className="text-[10px] font-black uppercase tracking-widest">{label}</span>
-    </div>
-    <div className={`p-1 rounded-md ${allowed ? 'bg-emerald-100 text-emerald-600' : 'bg-rose-100 text-rose-500'}`}>
-      {allowed ? <CheckCircle2 size={12} /> : <X size={12} />}
-    </div>
-  </div>
-);
-
-const ToolItem: React.FC<{ label: string, status: string }> = ({ label, status }) => (
-  <div className="flex items-center justify-between">
-    <span className="text-xs font-bold text-slate-400">{label}</span>
-    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full ${
-      status === 'active' ? 'bg-emerald-500 text-white' : 'bg-white/10 text-slate-400'
-    }`}>
-      {status}
-    </span>
-  </div>
-);
-
