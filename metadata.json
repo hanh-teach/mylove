@@ -1,0 +1,6 @@
+{
+  "name": "NoteMe",
+  "description": "NoteMe v2.0 - Cổng thông tin kỷ niệm độc lập và hệ thống tên miền tùy chỉnh.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
