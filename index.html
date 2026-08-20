@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NoteMe Workspace - Sáng Tạo & Kỷ Niệm</title>
+    <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png">
+    <link rel="icon" type="image/png" sizes="512x512" href="/icon-512.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="apple-touch-icon-precomposed" sizes="180x180" href="/apple-touch-icon.png">
+    <link rel="shortcut icon" href="/favicon.png">
+    <link rel="manifest" href="/manifest.json">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="NoteMe">
+    <meta name="application-name" content="NoteMe">
+    <meta name="msapplication-TileColor" content="#f43f5e">
+    <meta name="msapplication-TileImage" content="/icon-512.png">
+    <meta name="theme-color" content="#f43f5e">
+    <script>
+      (function() {
+        var mode = localStorage.getItem('lovenote-theme-mode');
+        var isDarkSystem = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var activeTheme = 'light';
+        if (mode === 'dark' || ( (!mode || mode === 'system') && isDarkSystem )) {
+          activeTheme = 'dark';
+        } else if (mode === 'high-contrast') {
+          activeTheme = 'high-contrast';
+        }
+        
+        var root = document.documentElement;
+        if (activeTheme === 'dark') {
+          root.classList.add('dark');
+        } else if (activeTheme === 'high-contrast') {
+          root.classList.add('dark', 'high-contrast');
+        } else {
+          root.classList.remove('dark', 'high-contrast');
+        }
+        root.setAttribute('data-theme', activeTheme);
+        root.style.colorScheme = (activeTheme === 'dark' || activeTheme === 'high-contrast') ? 'dark' : 'light';
+
+        var meta = document.querySelector('meta[name="theme-color"]');
+        if (meta) {
+          meta.setAttribute('content', (activeTheme === 'dark' || activeTheme === 'high-contrast') ? '#0f172a' : '#ffffff');
+        }
+      })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400;1,600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Caveat:wght@400;500;600;700&family=Dancing+Script:wght@400;500;600;700&family=Lobster&family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Merriweather:ital,wght@0,300;0,400;0,700;0,900;1,300;1,400;1,700;1,900&family=Nunito:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Pacifico&family=Playfair+Display:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap&subset=vietnamese" rel="stylesheet">
+    <script>
+      // Silence benign Vite HMR/WebSocket closed errors from triggering popup modals in the sandbox
+      window.addEventListener('unhandledrejection', function(event) {
+        var msg = '';
+        if (event.reason) {
+          if (typeof event.reason === 'string') {
+            msg = event.reason;
+          } else if (typeof event.reason.message === 'string') {
+            msg = event.reason.message;
+          }
+        }
+        if (msg && (
+          msg.indexOf('WebSocket') !== -1 ||
+          msg.indexOf('websocket') !== -1 ||
+          msg.indexOf('vite') !== -1 ||
+          msg.indexOf('HMR') !== -1
+        )) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+
+      window.addEventListener('error', function(event) {
+        var msg = event.message || '';
+        if (msg && (
+          msg.indexOf('WebSocket') !== -1 ||
+          msg.indexOf('websocket') !== -1 ||
+          msg.indexOf('vite') !== -1 ||
+          msg.indexOf('HMR') !== -1
+        )) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      }, true);
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

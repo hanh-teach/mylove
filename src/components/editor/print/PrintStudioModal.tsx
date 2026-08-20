@@ -1,0 +1,363 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { X, Printer, Settings, CheckCircle2, AlertCircle, RefreshCw, ZoomIn, ZoomOut } from 'lucide-react';
+import { PrintSettings, PaperSize, Orientation, MarginSize, ValidationResult } from '../../../modules/print/PrintTypes';
+import { PrintProfileRegistry } from '../../../modules/print/PrintProfileRegistry';
+import { LayoutValidator } from '../../../modules/print/LayoutValidator';
+import { PrintService } from '../../../modules/print/PrintService';
+import { extractPlainText } from '../../../utils/sanitize';
+
+interface PrintStudioModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  projectData: {
+    layers: any[];
+    canvasConfig: any;
+    activeProject?: any;
+    title?: string;
+    document?: any;
+    message?: string;
+  };
+}
+
+export const PrintStudioModal: React.FC<PrintStudioModalProps> = ({ isOpen, onClose, projectData }) => {
+  const [activeProfileId, setActiveProfileId] = useState<string>('default');
+  
+  // Settings
+  const [paperSize, setPaperSize] = useState<PaperSize>('a4');
+  const [orientation, setOrientation] = useState<Orientation>('portrait');
+  const [marginType, setMarginType] = useState<MarginSize>('normal');
+  const [header, setHeader] = useState(false);
+  const [footer, setFooter] = useState(false);
+  const [pageNumbers, setPageNumbers] = useState(true);
+  const [watermark, setWatermark] = useState('');
+  const [showBleed, setShowBleed] = useState(false);
+  const [duplex, setDuplex] = useState(false);
+  const [scale, setScale] = useState(1);
+  const [previewZoom, setPreviewZoom] = useState(0.5);
+
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+
+  // Load profile when changed
+  useEffect(() => {
+    const profile = PrintProfileRegistry.get(activeProfileId);
+    if (profile) {
+      setPaperSize(profile.paper.size);
+      setOrientation(profile.paper.orientation);
+      setMarginType(profile.margins.type);
+      setShowBleed(profile.showBleed);
+      setDuplex(profile.duplex);
+    }
+  }, [activeProfileId]);
+
+  const currentSettings: PrintSettings = useMemo(() => ({
+    paper: { size: paperSize, orientation },
+    margins: { type: marginType, top: 25, bottom: 25, left: 25, right: 25 },
+    header,
+    footer,
+    pageNumbers,
+    watermark,
+    showBleed,
+    duplex,
+    scale
+  }), [paperSize, orientation, marginType, header, footer, pageNumbers, watermark, showBleed, duplex, scale]);
+
+  // Run validation when settings or data changes
+  useEffect(() => {
+    if (isOpen) {
+      const result = LayoutValidator.validate(projectData.layers, currentSettings);
+      setValidation(result);
+    }
+  }, [isOpen, projectData.layers, currentSettings]);
+
+  if (!isOpen) return null;
+
+  const handlePrint = async () => {
+    await PrintService.print(currentSettings);
+  };
+
+  const profiles = PrintProfileRegistry.getAll();
+
+  return (
+    <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+      <div className="bg-surface w-full max-w-6xl h-full max-h-[850px] rounded-2xl shadow-2xl flex flex-col md:flex-row overflow-hidden animate-in fade-in zoom-in-95 duration-200">
+        
+        {/* Left Side: Preview Panel */}
+        <div className="flex-1 bg-surface-elevated p-6 flex flex-col border-b md:border-b-0 md:border-r border-border-base">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="text-sm font-semibold text-text-muted">Print Preview</h4>
+            <div className="flex bg-surface rounded-lg p-1 border border-border-base shadow-sm items-center gap-1">
+              <button 
+                onClick={() => setPreviewZoom(Math.max(0.25, previewZoom - 0.25))}
+                className="p-1.5 rounded hover:bg-surface-elevated text-text-muted"
+              >
+                <ZoomOut size={16} />
+              </button>
+              <span className="text-xs font-mono w-12 text-center text-text-main">{Math.round(previewZoom * 100)}%</span>
+              <button 
+                onClick={() => setPreviewZoom(Math.min(2, previewZoom + 0.25))}
+                className="p-1.5 rounded hover:bg-surface-elevated text-text-muted"
+              >
+                <ZoomIn size={16} />
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-auto flex items-center justify-center p-8">
+            <div 
+              className={`bg-white shadow-xl transition-all duration-300 relative
+                ${orientation === 'portrait' ? 'w-[210mm] h-[297mm]' : 'w-[297mm] h-[210mm]'}
+              `}
+              style={{
+                transform: `scale(${previewZoom})`,
+                transformOrigin: 'center center'
+              }}
+            >
+              {/* Paper Content Mockup */}
+              <div className="absolute inset-0 p-[25.4mm]">
+                {/* Safe Area & Margins Visualization */}
+                <div className="w-full h-full border border-dashed border-rose-300/50 relative">
+                  <span className="absolute -top-6 left-0 text-[10px] text-rose-400 font-mono">Printable Area</span>
+                  
+                  {/* Real project content rendering */}
+                  <div className="h-full bg-slate-50/50 flex flex-col p-8 items-center justify-start overflow-y-auto border border-slate-100">
+                     <h1 className="text-2xl sm:text-3xl font-playfair font-bold text-slate-800 mb-4 text-center">
+                       {projectData?.layers?.find((l: any) => l.id === 'layer_title')?.metadata?.text ||
+                        projectData?.title ||
+                        projectData?.activeProject?.name ||
+                        projectData?.document?.title ||
+                        'Tài liệu LoveNote'}
+                     </h1>
+                     <div className="w-full max-w-md bg-white p-6 rounded-xl border border-slate-200/80 text-slate-700 text-sm leading-relaxed text-center shadow-xs space-y-4">
+                       {projectData?.layers?.find((l: any) => l.id === 'layer_message')?.metadata?.text ||
+                        projectData?.message ||
+                        (projectData?.document?.blocks ? (
+                          projectData.document.blocks.map((b: any) => {
+                            if (b.type === 'image') {
+                              return (
+                                <div key={b.id || Math.random()} className="w-full rounded-xl overflow-hidden border border-rose-200 shadow-sm my-2 bg-slate-100 flex items-center justify-center">
+                                  <img src={b.content} alt="Ảnh kỷ niệm" className="w-full h-44 object-cover" />
+                                </div>
+                              );
+                            }
+                            return (
+                              <div key={b.id || Math.random()} className="text-left whitespace-pre-wrap">
+                                {extractPlainText(b.content)}
+                              </div>
+                            );
+                          })
+                        ) : 'Nội dung tài liệu sẽ được in tại đây.')}
+                     </div>
+                     {projectData?.layers?.filter((l: any) => l.type === 'text' && l.id !== 'layer_title' && l.id !== 'layer_message')?.map((tl: any) => (
+                        <div key={tl.id} className="w-full max-w-md mt-3 text-xs text-slate-600 bg-white/70 p-3 rounded-xl border border-slate-200/60 text-center">
+                          {tl.metadata?.text}
+                        </div>
+                      ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Overlays */}
+              {showBleed && (
+                <div className="absolute -inset-[3mm] border border-red-500/50 border-dashed pointer-events-none">
+                  <span className="absolute -top-5 -left-5 text-[10px] text-red-500 bg-white px-1">Bleed 3mm</span>
+                </div>
+              )}
+
+              {header && (
+                <div className="absolute top-2 left-0 right-0 text-center text-xs text-slate-400 font-mono">
+                  Document Header • {new Date().toLocaleDateString()}
+                </div>
+              )}
+
+              {footer && (
+                <div className="absolute bottom-2 left-0 right-0 text-center text-xs text-slate-400 font-mono">
+                  Confidential Document
+                </div>
+              )}
+
+              {pageNumbers && (
+                <div className="absolute bottom-8 right-8 text-sm font-bold text-slate-500">
+                  1 / 1
+                </div>
+              )}
+
+              {watermark && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden">
+                  <div className="text-[120px] font-black text-slate-900 opacity-5 rotate-45 whitespace-nowrap">
+                    {watermark.toUpperCase()}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side: Settings Panel */}
+        <div className="w-full md:w-[400px] bg-surface flex flex-col h-full overflow-hidden shrink-0">
+          
+          <div className="h-16 border-b border-border-base flex items-center justify-between px-6 shrink-0">
+            <h3 className="text-lg font-bold text-text-main flex items-center gap-2">
+              <Printer size={20} className="text-text-muted" />
+              Print Studio
+            </h3>
+            <button onClick={onClose} className="p-2 text-text-muted hover:text-text-main hover:bg-surface-elevated rounded-full transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-8">
+            
+            {/* Print Profiles */}
+            <div>
+              <label className="text-sm font-semibold text-text-main block mb-2">Print Profile</label>
+              <select 
+                value={activeProfileId}
+                onChange={(e) => setActiveProfileId(e.target.value)}
+                className="w-full bg-surface text-text-main border border-border-strong rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-slate-500"
+              >
+                {profiles.map(p => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Layout Validation Checklist */}
+            {validation && (
+              <div className="bg-surface-elevated rounded-xl border border-border-base p-4">
+                <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Pre-print Validation</h4>
+                <div className="space-y-2">
+                  {validation.issues.map(issue => (
+                    <div key={issue.id} className="flex items-start gap-2">
+                      {issue.status === 'ok' ? (
+                        <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                      ) : issue.status === 'warning' ? (
+                        <AlertCircle size={16} className="text-amber-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <X size={16} className="text-red-500 shrink-0 mt-0.5 bg-red-100 rounded-full" />
+                      )}
+                      <span className={`text-sm ${issue.status === 'ok' ? 'text-text-muted' : 'text-text-main font-medium'}`}>
+                        {issue.message}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Paper Settings */}
+            <div>
+              <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Paper & Layout</h4>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <select 
+                    value={paperSize}
+                    onChange={(e) => setPaperSize(e.target.value as PaperSize)}
+                    className="flex-1 bg-surface text-text-main border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  >
+                    <option value="a4">A4 (210 x 297mm)</option>
+                    <option value="a5">A5 (148 x 210mm)</option>
+                    <option value="letter">Letter (8.5 x 11")</option>
+                    <option value="legal">Legal (8.5 x 14")</option>
+                  </select>
+                  <select 
+                    value={orientation}
+                    onChange={(e) => setOrientation(e.target.value as Orientation)}
+                    className="flex-1 bg-surface text-text-main border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  >
+                    <option value="portrait">Portrait</option>
+                    <option value="landscape">Landscape</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="text-sm text-text-muted block mb-1">Margins</label>
+                  <select 
+                    value={marginType}
+                    onChange={(e) => setMarginType(e.target.value as MarginSize)}
+                    className="w-full bg-surface text-text-main border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+                  >
+                    <option value="normal">Normal (25.4mm)</option>
+                    <option value="narrow">Narrow (12.7mm)</option>
+                    <option value="wide">Wide (50.8mm)</option>
+                    <option value="none">None (Borderless)</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Options */}
+            <div>
+              <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-3">Options</h4>
+              <div className="grid grid-cols-2 gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={header} onChange={(e) => setHeader(e.target.checked)} className="w-4 h-4 rounded border-border-strong bg-surface text-slate-800 dark:text-slate-200 focus:ring-slate-500" />
+                  <span className="text-sm text-text-main">Header</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={footer} onChange={(e) => setFooter(e.target.checked)} className="w-4 h-4 rounded border-border-strong bg-surface text-slate-800 dark:text-slate-200 focus:ring-slate-500" />
+                  <span className="text-sm text-text-main">Footer</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={pageNumbers} onChange={(e) => setPageNumbers(e.target.checked)} className="w-4 h-4 rounded border-border-strong bg-surface text-slate-800 dark:text-slate-200 focus:ring-slate-500" />
+                  <span className="text-sm text-text-main">Page Numbers</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={showBleed} onChange={(e) => setShowBleed(e.target.checked)} className="w-4 h-4 rounded border-border-strong bg-surface text-slate-800 dark:text-slate-200 focus:ring-slate-500" />
+                  <span className="text-sm text-text-main">Show Bleed</span>
+                </label>
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" checked={duplex} onChange={(e) => setDuplex(e.target.checked)} className="w-4 h-4 rounded border-border-strong bg-surface text-slate-800 dark:text-slate-200 focus:ring-slate-500" />
+                  <span className="text-sm text-text-main">Two-Sided</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Watermark */}
+            <div>
+              <label className="text-sm font-semibold text-text-main block mb-2">Watermark</label>
+              <input 
+                type="text" 
+                value={watermark}
+                onChange={(e) => setWatermark(e.target.value)}
+                placeholder="e.g. DRAFT"
+                className="w-full bg-surface text-text-main border border-border-strong rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-slate-500"
+              />
+            </div>
+
+          </div>
+
+          <div className="p-4 border-t border-border-base bg-surface-elevated shrink-0 space-y-2">
+            <button 
+              onClick={handlePrint}
+              className="w-full bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md active:scale-[0.98]"
+            >
+              <Printer size={18} />
+              <span>In Tài Liệu / System Print</span>
+            </button>
+            <button
+              onClick={async () => {
+                const { printRendererEngine } = await import('../../../modules/export/PrintRendererEngine');
+                const { triggerFileDownload } = await import('../../../modules/export/downloadUtils');
+                const title = projectData?.title || 'LoveNote Card';
+                const message = projectData?.message || '';
+                const pdfBlob = await printRendererEngine.renderPrintPdf({
+                  paperSize: paperSize === 'a5' ? 'a5' : paperSize === 'a4' ? 'a4' : 'bifold_5x7',
+                  orientation: orientation,
+                  includeCropMarks: showBleed,
+                  includeBleed: showBleed,
+                  title,
+                  message
+                });
+                await triggerFileDownload(pdfBlob, `lovenote-print-300dpi-${Date.now()}.pdf`);
+              }}
+              className="w-full bg-rose-600 hover:bg-rose-500 text-white font-bold py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all shadow-md text-xs"
+            >
+              <span>Xuất PDF Chuẩn In Ấn 300 DPI</span>
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  );
+};
