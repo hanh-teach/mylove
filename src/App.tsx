@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, ComponentType, Suspense } from 'react';
-import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2, Folder, Share2, Scissors, Snowflake, Trash2, Search, SmilePlus } from 'lucide-react';
+import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2, Folder, Share2, Scissors, Snowflake, Trash2, Search, SmilePlus, Grid, Magnet, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { prepareClonedDocForHtml2Canvas, captureElementToCanvas, applyResolvedColorsToClone, getIconSvgMarkup, getExportCanvas } from './modules/export/ExportHelper';
 import { triggerFileDownload, shareFile, toProxiedMediaUrl, isLikelyImageUrl, prefetchImageAsBase64 } from './modules/export/downloadUtils';
@@ -265,6 +265,54 @@ function AppContent() {
   const [selectedDecorId, setSelectedDecorId] = useState<number | null>(null);
   const [decorTab, setDecorTab] = useState<'emojis' | 'stickers' | 'frames'>('emojis');
   const [stickerSearchQuery, setStickerSearchQuery] = useState('');
+
+  // Snap-to-Grid feature state for placedItems (stickers, framed photos, emojis)
+  const [snapToGrid, setSnapToGrid] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_snap_to_grid');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [gridSize, setGridSize] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_grid_size');
+      if (saved) return parseInt(saved, 10) || 20;
+    }
+    return 20;
+  });
+  const [showGridOverlay, setShowGridOverlay] = useState<boolean>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_show_grid_overlay');
+      if (saved !== null) return saved === 'true';
+    }
+    return true;
+  });
+  const [showGridMenu, setShowGridMenu] = useState(false);
+  const [gridStyle, setGridStyle] = useState<'dots' | 'lines'>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_grid_style');
+      if (saved === 'lines' || saved === 'dots') return saved;
+    }
+    return 'dots';
+  });
+  const [gridOpacity, setGridOpacity] = useState<number>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('card_grid_opacity');
+      if (saved) return parseFloat(saved) || 0.4;
+    }
+    return 0.4;
+  });
+  const [activeDragGuide, setActiveDragGuide] = useState<{
+    id: number;
+    rawX: number;
+    rawY: number;
+    snappedX: number;
+    snappedY: number;
+    isCenterSnappedX: boolean;
+    isCenterSnappedY: boolean;
+  } | null>(null);
+
   const [showStudioEditor, setShowStudioEditor] = useState(false);
   const [isCommandCenterOpen, setIsCommandCenterOpen] = useState(false);
   const [activeAppTab, setActiveAppTab] = useState<AppTabType>(() => {
@@ -1821,12 +1869,84 @@ function AppContent() {
     setShowDate(false);
   };
 
+  // Magnetic snap-to-grid coordinate resolver
+  const snapCoordinate = (val: number, step: number = gridSize, threshold: number = 8): number => {
+    if (Math.abs(val) <= Math.max(threshold, step / 3)) {
+      return 0; // Magnetically snaps to exact center axis 0
+    }
+    return Math.round(val / step) * step;
+  };
+
+  const toggleSnapToGrid = () => {
+    setSnapToGrid(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('card_snap_to_grid', String(next));
+      }
+      return next;
+    });
+  };
+
+  const changeGridSize = (size: number) => {
+    setGridSize(size);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_grid_size', String(size));
+    }
+  };
+
+  const toggleGridOverlay = () => {
+    setShowGridOverlay(prev => {
+      const next = !prev;
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('card_show_grid_overlay', String(next));
+      }
+      return next;
+    });
+  };
+
+  const changeGridStyle = (style: 'dots' | 'lines') => {
+    setGridStyle(style);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_grid_style', style);
+    }
+  };
+
+  const changeGridOpacity = (opacity: number) => {
+    setGridOpacity(opacity);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_grid_opacity', String(opacity));
+    }
+  };
+
+  const snapItemToGrid = (id: number) => {
+    setPlacedItems(prev => prev.map(item => {
+      if (item.id !== id) return item;
+      return {
+        ...item,
+        x: snapCoordinate(item.x, gridSize),
+        y: snapCoordinate(item.y, gridSize)
+      };
+    }));
+  };
+
+  const snapAllItemsToGrid = () => {
+    setPlacedItems(prev => prev.map(item => ({
+      ...item,
+      x: snapCoordinate(item.x, gridSize),
+      y: snapCoordinate(item.y, gridSize)
+    })));
+  };
+
   const addDecor = (type: DecorType) => {
     let defaultAnim: "none" | "float" | "pulse" | "spin" = "none";
     if (['Heart', 'Balloon', 'Birds'].includes(type)) defaultAnim = "float";
     else if (['Star', 'Sparkles', 'Smile'].includes(type)) defaultAnim = "pulse";
     else if (['Flower2', 'Cake'].includes(type)) defaultAnim = "spin";
-    setPlacedItems(prev => [...prev, { id: Date.now() + Math.floor(Math.random() * 100000), type, x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth / 2 : 200), y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight / 2 : 200), scale: 1, rotation: 0, color: decorColor, animation: defaultAnim }]);
+    const rawX = Math.random() * (typeof window !== 'undefined' ? window.innerWidth / 3 : 150) - 50;
+    const rawY = Math.random() * (typeof window !== 'undefined' ? window.innerHeight / 3 : 150) - 50;
+    const x = snapToGrid ? snapCoordinate(rawX, gridSize) : Math.round(rawX);
+    const y = snapToGrid ? snapCoordinate(rawY, gridSize) : Math.round(rawY);
+    setPlacedItems(prev => [...prev, { id: Date.now() + Math.floor(Math.random() * 100000), type, x, y, scale: 1, rotation: 0, color: decorColor, animation: defaultAnim }]);
   };
 
   const removeDecor = (id: number) => {
@@ -1838,14 +1958,18 @@ function AppContent() {
   };
 
   const addEmojiDecor = (emojiChar: string) => {
+    const rawX = Math.random() * (typeof window !== 'undefined' ? window.innerWidth / 3 : 150) - 40;
+    const rawY = Math.random() * (typeof window !== 'undefined' ? window.innerHeight / 3 : 150) - 40;
+    const x = snapToGrid ? snapCoordinate(rawX, gridSize) : Math.round(rawX);
+    const y = snapToGrid ? snapCoordinate(rawY, gridSize) : Math.round(rawY);
     setPlacedItems(prev => [
       ...prev,
       {
         id: Date.now() + Math.floor(Math.random() * 100000),
         type: 'Heart',
         emoji: emojiChar,
-        x: Math.random() * (typeof window !== 'undefined' ? window.innerWidth / 3 : 150) + 30,
-        y: Math.random() * (typeof window !== 'undefined' ? window.innerHeight / 3 : 150) + 30,
+        x,
+        y,
         scale: 1.2,
         rotation: 0,
         animation: 'float'
@@ -2404,8 +2528,44 @@ function AppContent() {
               setSelectedDecorId(item.id);
             }}
             onClick={(e) => e.stopPropagation()}
+            onDragStart={() => {
+              setSelectedDecorId(item.id);
+              const currentRawX = item.x;
+              const currentRawY = item.y;
+              const snappedX = snapToGrid ? snapCoordinate(currentRawX, gridSize) : currentRawX;
+              const snappedY = snapToGrid ? snapCoordinate(currentRawY, gridSize) : currentRawY;
+              setActiveDragGuide({
+                id: item.id,
+                rawX: currentRawX,
+                rawY: currentRawY,
+                snappedX,
+                snappedY,
+                isCenterSnappedX: Math.abs(snappedX) < 1,
+                isCenterSnappedY: Math.abs(snappedY) < 1,
+              });
+            }}
+            onDrag={(_, info) => {
+              const currentRawX = item.x + info.offset.x;
+              const currentRawY = item.y + info.offset.y;
+              const snappedX = snapToGrid ? snapCoordinate(currentRawX, gridSize) : Math.round(currentRawX);
+              const snappedY = snapToGrid ? snapCoordinate(currentRawY, gridSize) : Math.round(currentRawY);
+              setActiveDragGuide({
+                id: item.id,
+                rawX: currentRawX,
+                rawY: currentRawY,
+                snappedX,
+                snappedY,
+                isCenterSnappedX: Math.abs(snappedX) < 1,
+                isCenterSnappedY: Math.abs(snappedY) < 1,
+              });
+            }}
             onDragEnd={(_, info) => {
-              setPlacedItems(prev => prev.map(p => p.id === item.id ? { ...p, x: p.x + info.offset.x, y: p.y + info.offset.y } : p));
+              const rawX = item.x + info.offset.x;
+              const rawY = item.y + info.offset.y;
+              const finalX = snapToGrid ? snapCoordinate(rawX, gridSize) : Math.round(rawX);
+              const finalY = snapToGrid ? snapCoordinate(rawY, gridSize) : Math.round(rawY);
+              setPlacedItems(prev => prev.map(p => p.id === item.id ? { ...p, x: finalX, y: finalY } : p));
+              setActiveDragGuide(null);
             }}
             initial={{ x: item.x, y: item.y, scale: item.scale, rotate: item.rotation }}
             animate={{ x: item.x, y: item.y, scale: item.scale, rotate: item.rotation }}
@@ -2481,6 +2641,13 @@ function AppContent() {
               >
                 <Sparkles size={15} className="text-emerald-600" />
               </button>
+              <button 
+                onClick={(e) => { e.stopPropagation(); snapItemToGrid(item.id); }} 
+                className={`w-8 h-8 rounded-xl text-sm font-bold flex items-center justify-center transition-colors cursor-pointer active:scale-90 ${snapToGrid ? 'bg-amber-100 hover:bg-amber-200 text-amber-900' : 'bg-slate-100 hover:bg-slate-200 text-slate-700'}`} 
+                title={`Căn vào lưới ${gridSize}px (Snap)`}
+              >
+                <Magnet size={15} className={snapToGrid ? "text-amber-700" : "text-slate-600"} />
+              </button>
               <div className="w-[1px] h-5 bg-slate-200 dark:bg-slate-700 mx-0.5" />
               <button 
                 onClick={(e) => { e.stopPropagation(); removeDecor(item.id); }} 
@@ -2493,6 +2660,154 @@ function AppContent() {
           </motion.div>
         );
       })}
+
+      {/* Visual Snap-to-Grid Alignment Guides & Canvas Grid Overlay (HTML2Canvas Ignored) */}
+      <div data-html2canvas-ignore="true" className="pointer-events-none">
+        {/* Visual Canvas Grid Overlay (Independent of snapToGrid) */}
+        {showGridOverlay && (
+          <div 
+            className="absolute inset-0 pointer-events-none transition-opacity duration-300 z-10"
+            style={{
+              backgroundImage: gridStyle === 'lines'
+                ? `linear-gradient(to right, ${scene === 'forest' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(244, 63, 94, 0.16)'} 1px, transparent 1px), linear-gradient(to bottom, ${scene === 'forest' ? 'rgba(255, 255, 255, 0.22)' : 'rgba(244, 63, 94, 0.16)'} 1px, transparent 1px)`
+                : `radial-gradient(circle, ${scene === 'forest' ? 'rgba(255, 255, 255, 0.26)' : 'rgba(244, 63, 94, 0.2)'} 1.2px, transparent 1.2px)`,
+              backgroundSize: `${gridSize}px ${gridSize}px`,
+              backgroundPosition: 'center center',
+              opacity: activeDragGuide ? Math.min(1, gridOpacity * 1.6) : gridOpacity
+            }}
+          />
+        )}
+
+        {/* Real-time Magnetic Alignment Crosshairs and Landing Target while dragging */}
+        {activeDragGuide && (
+          <>
+            {/* Center Axis Reference Lines */}
+            <div className={`absolute top-0 bottom-0 left-1/2 w-[1px] -translate-x-1/2 transition-colors z-20 ${activeDragGuide.isCenterSnappedX ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-rose-300/30'}`} />
+            <div className={`absolute left-0 right-0 top-1/2 h-[1px] -translate-y-1/2 transition-colors z-20 ${activeDragGuide.isCenterSnappedY ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.8)]' : 'bg-rose-300/30'}`} />
+
+            {/* Snapped Crosshairs through item position */}
+            {snapToGrid && (
+              <>
+                <div 
+                  className="absolute top-0 bottom-0 w-[1px] bg-indigo-500/60 shadow-[0_0_6px_rgba(99,102,241,0.5)] z-20"
+                  style={{ left: `calc(50% + ${activeDragGuide.snappedX}px)` }}
+                />
+                <div 
+                  className="absolute left-0 right-0 h-[1px] bg-indigo-500/60 shadow-[0_0_6px_rgba(99,102,241,0.5)] z-20"
+                  style={{ top: `calc(50% + ${activeDragGuide.snappedY}px)` }}
+                />
+
+                {/* Ghost Landing Target Outline Box */}
+                <div 
+                  className="absolute w-20 h-20 -ml-10 -mt-10 rounded-2xl border-2 border-dashed border-indigo-500/80 bg-indigo-500/10 shadow-[0_0_12px_rgba(99,102,241,0.3)] z-30 flex items-center justify-center transition-transform duration-75"
+                  style={{ 
+                    left: '50%', 
+                    top: '50%',
+                    transform: `translate3d(${activeDragGuide.snappedX}px, ${activeDragGuide.snappedY}px, 0)` 
+                  }}
+                >
+                  <Magnet size={18} className="text-indigo-600 animate-pulse" />
+                </div>
+              </>
+            )}
+
+            {/* Real-time Coordinate Floating Badge */}
+            <div 
+              className="absolute z-60 px-2.5 py-1 rounded-xl bg-slate-900/90 text-white text-[11px] font-mono font-bold shadow-lg backdrop-blur-md flex items-center gap-1.5 border border-white/20 pointer-events-none -translate-x-1/2"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: `translate3d(${activeDragGuide.snappedX}px, ${activeDragGuide.snappedY}px, 0) translateY(-60px)`
+              }}
+            >
+              <Magnet size={12} className={snapToGrid ? "text-amber-400" : "text-slate-400"} />
+              <span>X: {activeDragGuide.snappedX}px, Y: {activeDragGuide.snappedY}px</span>
+              {activeDragGuide.isCenterSnappedX && (
+                <span className="bg-rose-500 text-white text-[9px] px-1 py-0.2 rounded font-sans">Trục X</span>
+              )}
+              {activeDragGuide.isCenterSnappedY && (
+                <span className="bg-rose-500 text-white text-[9px] px-1 py-0.2 rounded font-sans">Trục Y</span>
+              )}
+              {snapToGrid && (
+                <span className="text-amber-300 text-[10px] font-sans">({gridSize}px)</span>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* On-Canvas Floating Snap-to-Grid Quick Bar */}
+      <div 
+        data-html2canvas-ignore="true" 
+        className={`absolute top-4 right-4 z-40 flex items-center bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl border border-rose-200/80 shadow-md text-slate-800 dark:text-slate-100 transition-all ${
+          snapToGrid ? 'gap-1.5 px-2.5 py-1.5' : 'p-1'
+        }`}
+      >
+        <button
+          type="button"
+          onClick={toggleSnapToGrid}
+          className={`flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+            snapToGrid
+              ? 'gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold bg-rose-500 text-white shadow-xs'
+              : 'w-8 h-8 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 hover:text-slate-900 dark:bg-slate-800 dark:text-slate-300'
+          }`}
+          title={snapToGrid ? "Đang BẬT bám lưới. Bấm để tắt" : "Bật chế độ bám lưới (Snap to Grid)"}
+        >
+          <Magnet size={snapToGrid ? 14 : 16} className={snapToGrid ? "text-white" : "text-slate-600 dark:text-slate-300"} />
+          {snapToGrid && (
+            <>
+              <span>Bám lưới</span>
+              <span className="text-[10px] bg-rose-600 px-1.5 py-0.5 rounded font-mono">{gridSize}px</span>
+            </>
+          )}
+        </button>
+
+        {snapToGrid && (
+          <>
+            <div className="flex items-center bg-slate-100 dark:bg-slate-800 p-0.5 rounded-xl text-[10px] font-bold">
+              {[10, 20, 40].map((size) => (
+                <button
+                  key={size}
+                  type="button"
+                  onClick={() => changeGridSize(size)}
+                  className={`px-1.5 py-0.5 rounded-lg cursor-pointer transition-all ${
+                    gridSize === size
+                      ? 'bg-white dark:bg-slate-700 text-rose-600 shadow-2xs font-extrabold'
+                      : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  }`}
+                  title={`Bước lưới ${size}px`}
+                >
+                  {size}px
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              onClick={toggleGridOverlay}
+              className={`p-1.5 rounded-xl transition-colors cursor-pointer ${
+                showGridOverlay
+                  ? 'text-rose-600 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40'
+                  : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
+              title={showGridOverlay ? "Ẩn lưới chấm" : "Hiện lưới chấm"}
+            >
+              <Grid size={15} />
+            </button>
+
+            {placedItems.length > 0 && (
+              <button
+                type="button"
+                onClick={snapAllItemsToGrid}
+                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/40 text-rose-700 dark:text-rose-300 rounded-xl text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95"
+                title="Căn tất cả sticker và ảnh vào lưới ngay lập tức"
+              >
+                <span>Căn tất cả</span>
+              </button>
+            )}
+          </>
+        )}
+      </div>
 
       {/* Background Music Engine */}
       <div data-html2canvas-ignore="true">
@@ -2572,6 +2887,7 @@ function AppContent() {
                   setShowTextColorMenu(false);
                   setShowTextSizeMenu(false);
                   setShowPalette(false);
+                  setShowGridMenu(false);
                 }} 
                 className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
                   showFontMenu 
@@ -2591,6 +2907,7 @@ function AppContent() {
                   setShowTextColorMenu(false);
                   setShowTextSizeMenu(false);
                   setShowPalette(false);
+                  setShowGridMenu(false);
                 }} 
                 className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
                   showMusicMenu || currentMusic.id !== 'none' 
@@ -2610,6 +2927,7 @@ function AppContent() {
                   setShowMusicMenu(false);
                   setShowTextSizeMenu(false);
                   setShowPalette(false);
+                  setShowGridMenu(false);
                 }} 
                 className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
                   showTextColorMenu || textColor !== 'default' 
@@ -2629,6 +2947,7 @@ function AppContent() {
                   setShowMusicMenu(false);
                   setShowTextColorMenu(false);
                   setShowPalette(false);
+                  setShowGridMenu(false);
                 }} 
                 className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
                   showTextSizeMenu || textSize !== 1 
@@ -2648,6 +2967,7 @@ function AppContent() {
                   setShowMusicMenu(false);
                   setShowTextColorMenu(false);
                   setShowTextSizeMenu(false);
+                  setShowGridMenu(false);
                 }} 
                 className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
                   showPalette 
@@ -2658,6 +2978,62 @@ function AppContent() {
               >
                 <Flower size={18} className="text-pink-500" />
               </button>
+
+              {/* 9.5. Snap to Grid Toggle */}
+              <button 
+                onClick={toggleSnapToGrid} 
+                className={`p-2 sm:p-2.5 rounded-xl transition-all flex items-center justify-center shrink-0 border cursor-pointer shadow-xs active:scale-95 ${
+                  snapToGrid 
+                    ? 'bg-amber-100 text-amber-900 border-amber-300 font-bold ring-2 ring-amber-400/30' 
+                    : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                }`}
+                title={snapToGrid ? `Bám lưới đang BẬT (${gridSize}px) - Bấm để tắt` : "Bật chế độ bám lưới (Snap to Grid)"}
+              >
+                <Magnet size={18} className={snapToGrid ? "text-amber-600" : "text-slate-500"} />
+              </button>
+
+              {/* 9.6. Nút 'Lưới nâng cao' - Bật/tắt lưới nền (overlay) độc lập hoàn toàn với bám lưới */}
+              <div className="flex items-center shrink-0">
+                <button 
+                  id="toolbar-advanced-grid-btn"
+                  onClick={toggleGridOverlay} 
+                  className={`p-2 sm:p-2.5 rounded-l-xl transition-all flex items-center justify-center border cursor-pointer shadow-xs active:scale-95 gap-1.5 ${
+                    showGridOverlay 
+                      ? 'bg-indigo-100 text-indigo-900 border-indigo-300 font-bold ring-2 ring-indigo-400/30' 
+                      : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title={showGridOverlay ? "Lưới nâng cao: Đang BẬT lưới nền (Bấm để tắt) - Không ảnh hưởng cơ chế bám lưới" : "Lưới nâng cao: Đang TẮT lưới nền (Bấm để bật) - Không ảnh hưởng cơ chế bám lưới"}
+                >
+                  <Grid size={18} className={showGridOverlay ? "text-indigo-600" : "text-slate-500"} />
+                  <span className="text-xs font-bold hidden sm:inline whitespace-nowrap">Lưới nâng cao</span>
+                  <span className={`text-[10px] px-1.5 py-0.2 rounded font-mono hidden md:inline-block ${
+                    showGridOverlay ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'
+                  }`}>
+                    {showGridOverlay ? 'Bật' : 'Tắt'}
+                  </span>
+                </button>
+                <button
+                  id="toolbar-advanced-grid-menu-btn"
+                  onClick={() => {
+                    setShowGridMenu(!showGridMenu);
+                    setShowFontMenu(false);
+                    setShowMusicMenu(false);
+                    setShowTextColorMenu(false);
+                    setShowTextSizeMenu(false);
+                    setShowPalette(false);
+                  }}
+                  className={`p-2 sm:p-2.5 rounded-r-xl border-t border-b border-r transition-all flex items-center justify-center cursor-pointer shadow-xs active:scale-95 ${
+                    showGridMenu 
+                      ? 'bg-indigo-600 text-white border-indigo-600' 
+                      : showGridOverlay
+                        ? 'bg-indigo-50 text-indigo-800 border-indigo-300 hover:bg-indigo-100'
+                        : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-slate-100'
+                  }`}
+                  title="Tùy chỉnh Lưới nâng cao (Kích thước, kiểu lưới chấm/ô kẻ, độ mờ)"
+                >
+                  <Settings size={14} className={showGridMenu ? "rotate-45 transition-transform" : ""} />
+                </button>
+              </div>
 
               {/* 10. Edit text toggle (B7) */}
               <button 
@@ -2903,6 +3279,151 @@ function AppContent() {
                 </motion.div>
               )}
 
+              {/* Lưới Nâng Cao (Advanced Grid Settings Panel) */}
+              {showGridMenu && (
+                <motion.div 
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                  className="bg-indigo-50/95 dark:bg-slate-900/95 border-t border-indigo-200 dark:border-slate-700 px-3 py-3 text-xs shadow-inner"
+                >
+                  <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <div className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-200 shrink-0">
+                        <Grid size={16} className="text-indigo-600 dark:text-indigo-400" />
+                        <span>Lưới Nâng Cao:</span>
+                      </div>
+
+                      {/* 1. Lưới nền overlay toggle */}
+                      <button
+                        type="button"
+                        onClick={toggleGridOverlay}
+                        className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 ${
+                          showGridOverlay
+                            ? 'bg-indigo-600 text-white shadow-xs'
+                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 hover:bg-indigo-100/50'
+                        }`}
+                        title="Bật/Tắt hiển thị lưới nền (Không làm ảnh hưởng đến cơ chế bám lưới)"
+                      >
+                        <Grid size={14} />
+                        <span>Lưới nền (Overlay): {showGridOverlay ? 'Đang BẬT' : 'Đang TẮT'}</span>
+                      </button>
+
+                      {/* 2. Kiểu hiển thị lưới (Dots vs Lines) */}
+                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-indigo-200 dark:border-slate-700">
+                        <button
+                          type="button"
+                          onClick={() => changeGridStyle('dots')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                            gridStyle === 'dots'
+                              ? 'bg-indigo-500 text-white font-bold'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                          }`}
+                        >
+                          Chấm tròn
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => changeGridStyle('lines')}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                            gridStyle === 'lines'
+                              ? 'bg-indigo-500 text-white font-bold'
+                              : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                          }`}
+                        >
+                          Kẻ ô vuông
+                        </button>
+                      </div>
+
+                      {/* 3. Kích thước lưới */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-600 dark:text-slate-300 font-medium">Khoảng cách:</span>
+                        <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-0.5 border border-indigo-200 dark:border-slate-700">
+                          {[10, 20, 40].map(sz => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => changeGridSize(sz)}
+                              className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                                gridSize === sz
+                                  ? 'bg-indigo-500 text-white font-extrabold shadow-2xs'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                              }`}
+                              title={`Bước lưới ${sz}px`}
+                            >
+                              {sz}px
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* 4. Độ trong suốt */}
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-slate-600 dark:text-slate-300 font-medium">Độ mờ:</span>
+                        <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-0.5 border border-indigo-200 dark:border-slate-700">
+                          {[
+                            { label: 'Nhẹ', val: 0.25 },
+                            { label: 'Vừa', val: 0.45 },
+                            { label: 'Rõ', val: 0.75 }
+                          ].map(item => (
+                            <button
+                              key={item.label}
+                              type="button"
+                              onClick={() => changeGridOpacity(item.val)}
+                              className={`px-2 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
+                                Math.abs(gridOpacity - item.val) < 0.1
+                                  ? 'bg-indigo-500 text-white font-bold'
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                              }`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Phân tách độc lập với Cơ chế Bám Lưới */}
+                    <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-indigo-200 dark:border-slate-700 pt-2 md:pt-0 md:pl-3">
+                      <button
+                        type="button"
+                        onClick={toggleSnapToGrid}
+                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
+                          snapToGrid
+                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
+                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                        }`}
+                        title="Bật/Tắt tính năng nam châm bám lưới khi di chuyển sticker"
+                      >
+                        <Magnet size={13} className={snapToGrid ? "text-amber-600" : "text-slate-400"} />
+                        <span>Bám lưới (Snap): {snapToGrid ? 'BẬT' : 'TẮT'}</span>
+                      </button>
+
+                      {placedItems.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={snapAllItemsToGrid}
+                          className="px-2.5 py-1.5 bg-indigo-100/70 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 border border-indigo-200 dark:border-indigo-800"
+                          title="Căn chỉnh toàn bộ sticker/ảnh hiện có vào lưới"
+                        >
+                          <Magnet size={12} />
+                          <span>Căn tất cả</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => setShowGridMenu(false)}
+                        className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-indigo-100/50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        title="Đóng bảng cài đặt lưới"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                </motion.div>
+              )}
+
               {/* Decor & Emoji Studio Panel */}
               {showPalette && (
                 <motion.div 
@@ -2966,16 +3487,79 @@ function AppContent() {
                       </div>
                     </div>
 
-                    {/* Search Input Filter */}
-                    <div className="relative w-full max-w-sm">
-                      <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                      <input
-                        type="text"
-                        value={stickerSearchQuery}
-                        onChange={e => setStickerSearchQuery(e.target.value)}
-                        placeholder="Tìm Emoji hoặc Sticker (ví dụ: tim, hoa, quà, chim, bánh...)..."
-                        className="w-full pl-8 pr-3 py-1.5 text-xs bg-white border border-pink-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 text-slate-800 shadow-2xs"
-                      />
+                    {/* Snap to Grid and Search Filter Row */}
+                    <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+                      <div className="flex flex-wrap items-center gap-1.5 bg-rose-50/70 dark:bg-slate-800/80 p-1.5 rounded-xl border border-rose-200/80 dark:border-slate-700 text-xs">
+                        <button
+                          type="button"
+                          onClick={toggleSnapToGrid}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                            snapToGrid 
+                              ? 'bg-rose-500 text-white shadow-2xs' 
+                              : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600'
+                          }`}
+                          title="Bật/Tắt chế độ bám lưới (Snap to Grid)"
+                        >
+                          <Magnet size={13} className={snapToGrid ? "text-white" : "text-slate-500"} />
+                          <span>Bám lưới: {snapToGrid ? 'Bật' : 'Tắt'}</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={toggleGridOverlay}
+                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold border transition-colors cursor-pointer ${
+                            showGridOverlay 
+                              ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
+                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50'
+                          }`}
+                          title={showGridOverlay ? "Lưới nền: Đang BẬT (Bấm để ẩn) - Không ảnh hưởng bám lưới" : "Lưới nền: Đang TẮT (Bấm để hiện) - Không ảnh hưởng bám lưới"}
+                        >
+                          <Grid size={13} />
+                          <span>Lưới nền: {showGridOverlay ? 'Bật' : 'Tắt'}</span>
+                        </button>
+
+                        <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg p-0.5 border border-pink-200 dark:border-slate-600 text-[11px] font-semibold">
+                          {[10, 20, 40].map(sz => (
+                            <button
+                              key={sz}
+                              type="button"
+                              onClick={() => changeGridSize(sz)}
+                              className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                                gridSize === sz 
+                                  ? 'bg-rose-500 text-white font-bold' 
+                                  : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
+                              }`}
+                              title={`Bước lưới ${sz}px`}
+                            >
+                              {sz}px
+                            </button>
+                          ))}
+                        </div>
+
+                        {placedItems.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={snapAllItemsToGrid}
+                            className="px-2.5 py-1 bg-white dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                            title="Căn chỉnh toàn bộ sticker/ảnh hiện có vào lưới"
+                          >
+                            <Magnet size={12} />
+                            <span>Căn tất cả</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Search Input Filter */}
+                      <div className="relative flex-1 min-w-[200px] max-w-sm">
+                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={stickerSearchQuery}
+                          onChange={e => setStickerSearchQuery(e.target.value)}
+                          placeholder="Tìm Emoji hoặc Sticker (ví dụ: tim, hoa, quà, chim, bánh...)..."
+                          className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-pink-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 text-slate-800 dark:text-slate-100 shadow-2xs"
+                        />
+                      </div>
                     </div>
 
                     {/* Content View Based on Tab */}
