@@ -325,6 +325,18 @@ function AppContent() {
   }, [activeAppTab]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_grid_opacity', String(gridOpacity));
+    }
+  }, [gridOpacity]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('card_grid_style', gridStyle);
+    }
+  }, [gridStyle]);
+
+  useEffect(() => {
     fetch('/api/auth/me', { credentials: 'include' })
       .then(res => res.json())
       .then(data => {
@@ -3279,252 +3291,340 @@ function AppContent() {
                 </motion.div>
               )}
 
-              {/* Lưới Nâng Cao (Advanced Grid Settings Panel) */}
+              {/* Lưới Nâng Cao (Advanced Grid Settings Panel) - Tối ưu hóa chuẩn Mobile-First & Desktop */}
               {showGridMenu && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-indigo-50/95 dark:bg-slate-900/95 border-t border-indigo-200 dark:border-slate-700 px-3 py-3 text-xs shadow-inner"
+                  className="bg-indigo-50/95 dark:bg-slate-900/95 border-t border-indigo-200 dark:border-slate-700 px-3 sm:px-4 py-3 text-xs shadow-inner"
                 >
-                  <div className="max-w-7xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-3">
-                    <div className="flex flex-wrap items-center gap-3">
-                      <div className="flex items-center gap-1.5 font-bold text-indigo-950 dark:text-indigo-200 shrink-0">
-                        <Grid size={16} className="text-indigo-600 dark:text-indigo-400" />
-                        <span>Lưới Nâng Cao:</span>
-                      </div>
-
-                      {/* 1. Lưới nền overlay toggle */}
-                      <button
-                        type="button"
-                        onClick={toggleGridOverlay}
-                        className={`px-3 py-1.5 rounded-xl font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs active:scale-95 ${
-                          showGridOverlay
-                            ? 'bg-indigo-600 text-white shadow-xs'
-                            : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 hover:bg-indigo-100/50'
-                        }`}
-                        title="Bật/Tắt hiển thị lưới nền (Không làm ảnh hưởng đến cơ chế bám lưới)"
-                      >
-                        <Grid size={14} />
-                        <span>Lưới nền (Overlay): {showGridOverlay ? 'Đang BẬT' : 'Đang TẮT'}</span>
-                      </button>
-
-                      {/* 2. Kiểu hiển thị lưới (Dots vs Lines) */}
-                      <div className="flex items-center gap-1 bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-indigo-200 dark:border-slate-700">
-                        <button
-                          type="button"
-                          onClick={() => changeGridStyle('dots')}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                            gridStyle === 'dots'
-                              ? 'bg-indigo-500 text-white font-bold'
-                              : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
-                          }`}
-                        >
-                          Chấm tròn
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => changeGridStyle('lines')}
-                          className={`px-2.5 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                            gridStyle === 'lines'
-                              ? 'bg-indigo-500 text-white font-bold'
-                              : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
-                          }`}
-                        >
-                          Kẻ ô vuông
-                        </button>
-                      </div>
-
-                      {/* 3. Kích thước lưới */}
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-600 dark:text-slate-300 font-medium">Khoảng cách:</span>
-                        <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-0.5 border border-indigo-200 dark:border-slate-700">
-                          {[10, 20, 40].map(sz => (
-                            <button
-                              key={sz}
-                              type="button"
-                              onClick={() => changeGridSize(sz)}
-                              className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
-                                gridSize === sz
-                                  ? 'bg-indigo-500 text-white font-extrabold shadow-2xs'
-                                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
-                              }`}
-                              title={`Bước lưới ${sz}px`}
-                            >
-                              {sz}px
-                            </button>
-                          ))}
+                  <div className="max-w-7xl mx-auto flex flex-col gap-2.5">
+                    {/* Header: Tiêu đề rõ ràng và Nút đóng góc trên bên phải thuận tiện ngón tay */}
+                    <div className="flex items-center justify-between pb-1 border-b border-indigo-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <div className="p-1 rounded-lg bg-indigo-600 text-white shadow-2xs">
+                          <Grid size={15} />
                         </div>
+                        <span className="font-bold text-xs sm:text-sm text-indigo-950 dark:text-indigo-200">
+                          Lưới & Căn Chỉnh
+                        </span>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-semibold border ${
+                          showGridOverlay 
+                            ? 'bg-indigo-100 text-indigo-800 border-indigo-200 dark:bg-indigo-950 dark:text-indigo-300 dark:border-indigo-800' 
+                            : 'bg-slate-100 text-slate-600 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'
+                        }`}>
+                          {showGridOverlay ? 'Đang hiển thị lưới' : 'Đang ẩn lưới'}
+                        </span>
                       </div>
-
-                      {/* 4. Độ trong suốt */}
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-slate-600 dark:text-slate-300 font-medium">Độ mờ:</span>
-                        <div className="flex items-center bg-white dark:bg-slate-800 rounded-xl p-0.5 border border-indigo-200 dark:border-slate-700">
-                          {[
-                            { label: 'Nhẹ', val: 0.25 },
-                            { label: 'Vừa', val: 0.45 },
-                            { label: 'Rõ', val: 0.75 }
-                          ].map(item => (
-                            <button
-                              key={item.label}
-                              type="button"
-                              onClick={() => changeGridOpacity(item.val)}
-                              className={`px-2 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-all ${
-                                Math.abs(gridOpacity - item.val) < 0.1
-                                  ? 'bg-indigo-500 text-white font-bold'
-                                  : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
-                              }`}
-                            >
-                              {item.label}
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Phân tách độc lập với Cơ chế Bám Lưới */}
-                    <div className="flex items-center gap-2 border-t md:border-t-0 md:border-l border-indigo-200 dark:border-slate-700 pt-2 md:pt-0 md:pl-3">
-                      <button
-                        type="button"
-                        onClick={toggleSnapToGrid}
-                        className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-2xs ${
-                          snapToGrid
-                            ? 'bg-amber-100 text-amber-900 border border-amber-300'
-                            : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:bg-slate-100'
-                        }`}
-                        title="Bật/Tắt tính năng nam châm bám lưới khi di chuyển sticker"
-                      >
-                        <Magnet size={13} className={snapToGrid ? "text-amber-600" : "text-slate-400"} />
-                        <span>Bám lưới (Snap): {snapToGrid ? 'BẬT' : 'TẮT'}</span>
-                      </button>
-
-                      {placedItems.length > 0 && (
-                        <button
-                          type="button"
-                          onClick={snapAllItemsToGrid}
-                          className="px-2.5 py-1.5 bg-indigo-100/70 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/50 dark:text-indigo-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 border border-indigo-200 dark:border-indigo-800"
-                          title="Căn chỉnh toàn bộ sticker/ảnh hiện có vào lưới"
-                        >
-                          <Magnet size={12} />
-                          <span>Căn tất cả</span>
-                        </button>
-                      )}
 
                       <button
                         type="button"
                         onClick={() => setShowGridMenu(false)}
-                        className="p-1.5 text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-indigo-100/50 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                        className="w-7 h-7 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-indigo-100/70 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer active:scale-95"
                         title="Đóng bảng cài đặt lưới"
+                        aria-label="Đóng"
                       >
                         ✕
                       </button>
+                    </div>
+
+                    {/* Khối điều khiển chính: Sắp xếp theo nhóm khoa học, gọn gàng */}
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2.5">
+                      
+                      {/* Cụm 1: Bật/Tắt Lưới nền & Chọn Kiểu Lưới (Chấm / Ô vuông) */}
+                      <div className="grid grid-cols-2 sm:flex sm:items-center gap-2">
+                        {/* 1. Lưới nền overlay toggle */}
+                        <button
+                          type="button"
+                          onClick={toggleGridOverlay}
+                          className={`h-9 px-3 rounded-xl font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 text-xs ${
+                            showGridOverlay
+                              ? 'bg-indigo-600 text-white shadow-xs'
+                              : 'bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 border border-indigo-200 dark:border-slate-700 hover:bg-indigo-100/50'
+                          }`}
+                          title="Bật/Tắt hiển thị lưới nền trên canvas"
+                        >
+                          {showGridOverlay ? <Eye size={14} /> : <EyeOff size={14} />}
+                          <span className="whitespace-nowrap">Lưới nền: {showGridOverlay ? 'BẬT' : 'TẮT'}</span>
+                        </button>
+
+                        {/* 2. Kiểu hiển thị lưới (Dots vs Lines) */}
+                        <div className="h-9 flex items-center bg-white dark:bg-slate-800 p-0.5 rounded-xl border border-indigo-200 dark:border-slate-700 shadow-2xs">
+                          <button
+                            type="button"
+                            onClick={() => changeGridStyle('dots')}
+                            className={`flex-1 sm:flex-none px-2.5 h-full rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${
+                              gridStyle === 'dots'
+                                ? 'bg-indigo-500 text-white font-bold shadow-2xs'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                            }`}
+                            title="Hiển thị lưới dạng chấm tròn"
+                          >
+                            Chấm tròn
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => changeGridStyle('lines')}
+                            className={`flex-1 sm:flex-none px-2.5 h-full rounded-lg text-xs font-semibold cursor-pointer transition-all flex items-center justify-center ${
+                              gridStyle === 'lines'
+                                ? 'bg-indigo-500 text-white font-bold shadow-2xs'
+                                : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                            }`}
+                            title="Hiển thị lưới dạng kẻ ô vuông"
+                          >
+                            Kẻ ô vuông
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Cụm 2: Khoảng cách lưới & Độ mờ */}
+                      <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                        {/* Khoảng cách lưới */}
+                        <div className="flex items-center justify-between sm:justify-start gap-2 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-indigo-200 dark:border-slate-700 shadow-2xs h-9">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium shrink-0">Khoảng cách:</span>
+                          <div className="flex items-center gap-1">
+                            {[10, 20, 40].map(sz => (
+                              <button
+                                key={sz}
+                                type="button"
+                                onClick={() => changeGridSize(sz)}
+                                className={`px-2 py-1 rounded-lg text-xs font-bold cursor-pointer transition-all ${
+                                  gridSize === sz
+                                    ? 'bg-indigo-500 text-white font-extrabold shadow-2xs'
+                                    : 'text-slate-600 dark:text-slate-300 hover:text-indigo-700'
+                                }`}
+                                title={`Bước lưới ${sz}px`}
+                              >
+                                {sz}px
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Độ mờ thanh trượt (gridOpacity 0.1 -> 1.0) */}
+                        <div className="flex items-center gap-2 bg-white dark:bg-slate-800 px-2.5 py-1 rounded-xl border border-indigo-200 dark:border-slate-700 shadow-2xs h-9">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium shrink-0">Độ mờ:</span>
+                          <input
+                            id="grid-opacity-slider"
+                            type="range"
+                            min="0.1"
+                            max="1.0"
+                            step="0.05"
+                            value={gridOpacity}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value);
+                              if (!isNaN(val)) changeGridOpacity(val);
+                            }}
+                            onInput={(e) => {
+                              const val = parseFloat((e.target as HTMLInputElement).value);
+                              if (!isNaN(val)) changeGridOpacity(val);
+                            }}
+                            className="flex-1 sm:w-24 md:w-28 h-1.5 bg-indigo-100 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+                            title={`Kéo để chỉnh độ đậm nhạt: ${Math.round(gridOpacity * 100)}%`}
+                          />
+                          <span className="font-mono font-bold text-[11px] text-indigo-700 dark:text-indigo-300 min-w-[32px] text-right">
+                            {Math.round(gridOpacity * 100)}%
+                          </span>
+                          <div className="hidden xs:flex items-center gap-0.5 border-l border-indigo-100 dark:border-slate-700 pl-1.5 ml-0.5">
+                            {[
+                              { label: '25%', val: 0.25 },
+                              { label: '50%', val: 0.5 },
+                              { label: '80%', val: 0.8 }
+                            ].map(item => (
+                              <button
+                                key={item.label}
+                                type="button"
+                                onClick={() => changeGridOpacity(item.val)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-semibold cursor-pointer transition-all ${
+                                  Math.abs(gridOpacity - item.val) < 0.08
+                                    ? 'bg-indigo-500 text-white font-bold'
+                                    : 'text-slate-500 hover:text-indigo-600 dark:text-slate-400'
+                                }`}
+                                title={`Chọn nhanh độ mờ ${item.label}`}
+                              >
+                                {item.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Cụm 3: Nam châm bám lưới (Snap) & Căn chỉnh tất cả */}
+                      <div className="flex items-center gap-2 pt-1 lg:pt-0 border-t lg:border-t-0 lg:border-l border-indigo-200 dark:border-slate-700 lg:pl-3">
+                        <button
+                          type="button"
+                          onClick={toggleSnapToGrid}
+                          className={`flex-1 lg:flex-none h-9 px-3 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-2xs active:scale-95 border ${
+                            snapToGrid
+                              ? 'bg-amber-100 text-amber-900 border-amber-300 dark:bg-amber-950/60 dark:text-amber-200 dark:border-amber-800'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:bg-slate-100'
+                          }`}
+                          title="Bật/Tắt tính năng nam châm tự động hút sticker vào giao điểm lưới khi kéo thả"
+                        >
+                          <Magnet size={14} className={snapToGrid ? "text-amber-600 dark:text-amber-400" : "text-slate-400"} />
+                          <span className="whitespace-nowrap">Bám lưới: {snapToGrid ? 'BẬT' : 'TẮT'}</span>
+                        </button>
+
+                        {placedItems.length > 0 && (
+                          <button
+                            type="button"
+                            onClick={snapAllItemsToGrid}
+                            className="h-9 px-3 bg-indigo-100/80 hover:bg-indigo-100 text-indigo-800 dark:bg-indigo-950/60 dark:text-indigo-200 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1 active:scale-95 border border-indigo-200 dark:border-indigo-800 whitespace-nowrap shadow-2xs"
+                            title="Căn chỉnh toàn bộ sticker/ảnh hiện có vào mắt lưới gần nhất"
+                          >
+                            <Magnet size={13} />
+                            <span>Căn tất cả</span>
+                          </button>
+                        )}
+                      </div>
+
                     </div>
                   </div>
                 </motion.div>
               )}
 
-              {/* Decor & Emoji Studio Panel */}
+              {/* Decor & Emoji Studio Panel - Compact Height for Maximized Canvas */}
               {showPalette && (
                 <motion.div 
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
                   exit={{ opacity: 0, height: 0 }}
-                  className="bg-pink-50/95 border-t border-pink-100 px-3 py-3 text-xs shadow-inner"
+                  className="bg-pink-50/95 dark:bg-slate-900/95 border-t border-pink-100 dark:border-slate-800 px-2 sm:px-3 py-1.5 text-xs shadow-inner"
                 >
-                  <div className="max-w-7xl mx-auto flex flex-col gap-3">
-                    {/* Header & Tabs */}
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-pink-200/80 pb-2">
-                      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
-                        <span className="font-bold text-pink-950 flex items-center gap-1 text-xs shrink-0 mr-1">
-                          <SmilePlus size={15} className="text-pink-600" /> Sticker & Emoji Studio:
+                  <div className="max-w-7xl mx-auto flex flex-col gap-1.5">
+                    {/* Header & Tabs Row: Single compact line */}
+                    <div className="flex items-center justify-between gap-1 pb-1 border-b border-pink-200/70 dark:border-slate-800">
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5">
+                        <span className="font-bold text-pink-950 dark:text-pink-200 flex items-center gap-1 text-[11px] shrink-0 mr-0.5">
+                          <SmilePlus size={14} className="text-pink-600" />
+                          <span className="hidden xs:inline">Sticker & Emoji:</span>
                         </span>
                         <button
                           type="button"
                           onClick={() => setDecorTab('emojis')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                             decorTab === 'emojis'
                               ? 'bg-pink-600 text-white shadow-xs'
-                              : 'bg-white hover:bg-pink-100 text-slate-700 border border-pink-200'
+                              : 'bg-white dark:bg-slate-800 hover:bg-pink-100 text-slate-700 dark:text-slate-200 border border-pink-200 dark:border-slate-700'
                           }`}
                         >
-                          <span>🥰 Emoji Lãng Mạn</span>
+                          <span>🥰 Emoji</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setDecorTab('stickers')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                             decorTab === 'stickers'
                               ? 'bg-pink-600 text-white shadow-xs'
-                              : 'bg-white hover:bg-pink-100 text-slate-700 border border-pink-200'
+                              : 'bg-white dark:bg-slate-800 hover:bg-pink-100 text-slate-700 dark:text-slate-200 border border-pink-200 dark:border-slate-700'
                           }`}
                         >
-                          <span>✨ Sticker & Họa Tiết</span>
+                          <span>✨ Sticker</span>
                         </button>
                         <button
                           type="button"
                           onClick={() => setDecorTab('frames')}
-                          className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+                          className={`px-2 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
                             decorTab === 'frames'
                               ? 'bg-pink-600 text-white shadow-xs'
-                              : 'bg-white hover:bg-pink-100 text-slate-700 border border-pink-200'
+                              : 'bg-white dark:bg-slate-800 hover:bg-pink-100 text-slate-700 dark:text-slate-200 border border-pink-200 dark:border-slate-700'
                           }`}
                         >
-                          <span>🖼️ Dáng Khung</span>
+                          <span>🖼️ Khung</span>
                         </button>
                       </div>
 
-                      <div className="flex items-center gap-2 shrink-0">
-                        <div className="flex items-center gap-1 bg-white px-2 py-1 rounded-xl border border-pink-200 shadow-2xs">
-                          <span className="text-[11px] text-slate-600 font-medium">Màu Icon:</span>
-                          <input type="color" value={decorColor} onChange={e => setDecorColor(e.target.value)} className="w-5 h-5 rounded cursor-pointer border-0 p-0" />
-                        </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {decorTab === 'stickers' && (
+                          <label className="flex items-center gap-1 bg-white dark:bg-slate-800 px-1.5 py-0.5 rounded-lg border border-pink-200 dark:border-slate-700 shadow-2xs cursor-pointer" title="Màu Icon">
+                            <span className="text-[10px] text-slate-600 dark:text-slate-300 font-medium hidden sm:inline">Màu:</span>
+                            <input type="color" value={decorColor} onChange={e => setDecorColor(e.target.value)} className="w-4 h-4 rounded cursor-pointer border-0 p-0" />
+                          </label>
+                        )}
                         {placedItems.length > 0 && (
-                          <button onClick={clearAllDecor} className="text-xs bg-rose-100 hover:bg-rose-200 text-rose-800 px-2.5 py-1 rounded-xl font-bold transition-colors cursor-pointer flex items-center gap-1">
-                            <Trash2 size={12} /> Xóa tất cả ({placedItems.length})
+                          <button 
+                            type="button"
+                            onClick={clearAllDecor} 
+                            className="text-[11px] bg-rose-100 hover:bg-rose-200 text-rose-800 dark:bg-rose-950 dark:text-rose-200 px-2 py-0.5 rounded-lg font-bold transition-colors cursor-pointer flex items-center gap-1 shrink-0"
+                            title="Xóa tất cả sticker đã thêm"
+                          >
+                            <Trash2 size={11} /> <span className="hidden sm:inline">Xóa</span> ({placedItems.length})
                           </button>
                         )}
+                        <button
+                          type="button"
+                          onClick={() => setShowPalette(false)}
+                          className="w-6 h-6 flex items-center justify-center text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-pink-100 dark:hover:bg-slate-800 rounded-md transition-colors cursor-pointer text-sm font-bold ml-0.5"
+                          title="Đóng bảng Sticker"
+                          aria-label="Đóng"
+                        >
+                          ✕
+                        </button>
                       </div>
                     </div>
 
-                    {/* Snap to Grid and Search Filter Row */}
-                    <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
-                      <div className="flex flex-wrap items-center gap-1.5 bg-rose-50/70 dark:bg-slate-800/80 p-1.5 rounded-xl border border-rose-200/80 dark:border-slate-700 text-xs">
+                    {/* Quick Tools Row: Search Filter & Compact Single-Line Grid Ribbon */}
+                    <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-1.5">
+                      {/* Search Input Filter */}
+                      <div className="relative flex-1 min-w-[140px] max-w-sm">
+                        <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <input
+                          type="text"
+                          value={stickerSearchQuery}
+                          onChange={e => setStickerSearchQuery(e.target.value)}
+                          placeholder="Tìm Emoji hoặc Sticker..."
+                          className="w-full pl-7 pr-6 py-1 h-7 text-xs bg-white dark:bg-slate-800 border border-pink-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-1 focus:ring-pink-400 text-slate-800 dark:text-slate-100 shadow-2xs placeholder:text-slate-400"
+                        />
+                        {stickerSearchQuery && (
+                          <button
+                            type="button"
+                            onClick={() => setStickerSearchQuery('')}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs cursor-pointer"
+                            title="Xóa tìm kiếm"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Compact Single-Line Grid Ribbon (NO wrapping, strictly 1 slim line) */}
+                      <div className="flex items-center gap-1 overflow-x-auto no-scrollbar py-0.5 flex-nowrap shrink-0 text-[11px]">
                         <button
                           type="button"
                           onClick={toggleSnapToGrid}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold transition-all cursor-pointer ${
+                          className={`h-6.5 px-2 rounded-md font-bold transition-all cursor-pointer flex items-center gap-1 shrink-0 border ${
                             snapToGrid 
-                              ? 'bg-rose-500 text-white shadow-2xs' 
-                              : 'bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-600'
+                              ? 'bg-rose-500 text-white border-rose-600 shadow-2xs' 
+                              : 'bg-white dark:bg-slate-800 hover:bg-slate-50 text-slate-700 dark:text-slate-200 border-pink-200 dark:border-slate-700'
                           }`}
                           title="Bật/Tắt chế độ bám lưới (Snap to Grid)"
                         >
-                          <Magnet size={13} className={snapToGrid ? "text-white" : "text-slate-500"} />
-                          <span>Bám lưới: {snapToGrid ? 'Bật' : 'Tắt'}</span>
+                          <Magnet size={11} className={snapToGrid ? "text-white" : "text-slate-400"} />
+                          <span className="whitespace-nowrap">Bám lưới: {snapToGrid ? 'Bật' : 'Tắt'}</span>
                         </button>
 
                         <button
                           type="button"
                           onClick={toggleGridOverlay}
-                          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg font-bold border transition-colors cursor-pointer ${
+                          className={`h-6.5 px-2 rounded-md font-bold border transition-colors cursor-pointer flex items-center gap-1 shrink-0 ${
                             showGridOverlay 
                               ? 'bg-indigo-600 text-white border-indigo-600 shadow-2xs' 
-                              : 'bg-white dark:bg-slate-700 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-600 hover:bg-slate-50'
+                              : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-pink-200 dark:border-slate-700 hover:bg-slate-50'
                           }`}
-                          title={showGridOverlay ? "Lưới nền: Đang BẬT (Bấm để ẩn) - Không ảnh hưởng bám lưới" : "Lưới nền: Đang TẮT (Bấm để hiện) - Không ảnh hưởng bám lưới"}
+                          title="Bật/Tắt hiển thị lưới nền"
                         >
-                          <Grid size={13} />
-                          <span>Lưới nền: {showGridOverlay ? 'Bật' : 'Tắt'}</span>
+                          <Grid size={11} />
+                          <span className="whitespace-nowrap">Lưới: {showGridOverlay ? 'Bật' : 'Tắt'}</span>
                         </button>
 
-                        <div className="flex items-center bg-white dark:bg-slate-700 rounded-lg p-0.5 border border-pink-200 dark:border-slate-600 text-[11px] font-semibold">
+                        <div className="h-6.5 flex items-center bg-white dark:bg-slate-800 rounded-md p-0.5 border border-pink-200 dark:border-slate-700 shrink-0">
                           {[10, 20, 40].map(sz => (
                             <button
                               key={sz}
                               type="button"
                               onClick={() => changeGridSize(sz)}
-                              className={`px-2 py-0.5 rounded cursor-pointer transition-all ${
+                              className={`px-1.5 h-full rounded text-[10px] cursor-pointer transition-all flex items-center justify-center ${
                                 gridSize === sz 
                                   ? 'bg-rose-500 text-white font-bold' 
                                   : 'text-slate-600 dark:text-slate-300 hover:text-slate-900'
@@ -3540,25 +3640,13 @@ function AppContent() {
                           <button
                             type="button"
                             onClick={snapAllItemsToGrid}
-                            className="px-2.5 py-1 bg-white dark:bg-slate-700 hover:bg-rose-50 dark:hover:bg-rose-900/30 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-slate-600 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1 active:scale-95 shadow-2xs"
+                            className="h-6.5 px-2 bg-white dark:bg-slate-800 hover:bg-rose-50 text-rose-700 dark:text-rose-300 border border-rose-200 dark:border-slate-700 rounded-md text-[10px] font-bold transition-colors cursor-pointer flex items-center gap-1 active:scale-95 shrink-0 whitespace-nowrap"
                             title="Căn chỉnh toàn bộ sticker/ảnh hiện có vào lưới"
                           >
-                            <Magnet size={12} />
+                            <Magnet size={11} />
                             <span>Căn tất cả</span>
                           </button>
                         )}
-                      </div>
-
-                      {/* Search Input Filter */}
-                      <div className="relative flex-1 min-w-[200px] max-w-sm">
-                        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <input
-                          type="text"
-                          value={stickerSearchQuery}
-                          onChange={e => setStickerSearchQuery(e.target.value)}
-                          placeholder="Tìm Emoji hoặc Sticker (ví dụ: tim, hoa, quà, chim, bánh...)..."
-                          className="w-full pl-8 pr-3 py-1.5 text-xs bg-white dark:bg-slate-800 border border-pink-200 dark:border-slate-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-pink-400 text-slate-800 dark:text-slate-100 shadow-2xs"
-                        />
                       </div>
                     </div>
 

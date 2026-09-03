@@ -59,6 +59,31 @@
 }
 
 @layer utilities {
+  /* Hide scrollbars across all browsers while keeping smooth touch scrolling */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Refined, unobtrusive scrollbar for compact gallery views */
+  .custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(244, 63, 94, 0.25);
+    border-radius: 9999px;
+  }
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(244, 63, 94, 0.5);
+  }
+
   .animate-kenburns {
     animation: kenburns 10s ease-in-out infinite alternate;
   }
