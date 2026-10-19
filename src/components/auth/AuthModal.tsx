@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, User, Crown, ShieldAlert, Key, Mail, CheckCircle2, LogOut, ArrowRight, Sparkles, ExternalLink, ShieldCheck, Lock, Copy } from 'lucide-react';
+import { X, User, Crown, ShieldAlert, Key, Mail, CheckCircle2, LogOut, ArrowRight, Sparkles, ExternalLink, ShieldCheck, Lock, Copy, CreditCard, Trash2, Info } from 'lucide-react';
 import { useCurrentUser, useWorkspaceZustandStore } from '../../modules/workspace/WorkspaceZustandStore';
 import { isOwnerUser } from '../../shared/utils/authPermissions';
 import { SUPPORT_CONTACT_EMAILS, SUPPORT_DISPLAY_NAME } from '../../config/contact';
@@ -32,6 +32,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const [is2FARequired, setIs2FARequired] = useState(false);
   const [twoFactorInputCode, setTwoFactorInputCode] = useState('');
   const [twoFactorOtpNotice, setTwoFactorOtpNotice] = useState('');
+
+  useEffect(() => {
+    const handleOpenAuth = (e: any) => {
+      if (e?.detail?.tab) {
+        setActiveTab(e.detail.tab);
+      }
+    };
+    window.addEventListener('open-auth-modal', handleOpenAuth);
+    return () => window.removeEventListener('open-auth-modal', handleOpenAuth);
+  }, []);
 
   useEffect(() => {
     if (currentUser.email) {
@@ -318,6 +328,12 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
   const handleSaveHuggingKey = () => {
     localStorage.setItem('lovenote_huggingface_api_key', huggingKey.trim());
     showToast('Đã lưu Hugging Face API Key thành công!');
+  };
+
+  const handleRemoveHuggingKey = () => {
+    localStorage.removeItem('lovenote_huggingface_api_key');
+    setHuggingKey('');
+    showToast('Đã xóa Hugging Face API Key khỏi trình duyệt!');
   };
 
   const handleLogout = async () => {
@@ -913,41 +929,93 @@ export const AuthModal: React.FC<AuthModalProps> = ({ isOpen, onClose }) => {
 
           {/* TAB 3: HUGGING FACE API KEY */}
           {activeTab === 'hugging' && (
-            <div className="space-y-5">
-              <div className="space-y-2">
-                <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider">Thiết lập Hugging Face API Key</h4>
+            <div className="space-y-4">
+              <div className="space-y-1.5">
+                <h4 className="text-xs font-black text-slate-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
+                  <Key size={15} className="text-rose-600" />
+                  Thiết lập Hugging Face API Key
+                </h4>
                 <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">
                   Đối với tài khoản người dùng chuẩn, bạn có thể tự cài đặt API Key Hugging Face cá nhân để sử dụng tính năng <strong>Xuất video animation</strong> mà không cần phải chuyển sang tài khoản chủ.
                 </p>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Hugging Face API Key (`hf_...`)</label>
+              {/* Notice regarding Inference Providers credits */}
+              <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 p-3 rounded-xl text-xs space-y-1.5 text-amber-900 dark:text-amber-200">
+                <p className="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                  <CreditCard size={14} className="text-amber-600 shrink-0" />
+                  Lưu ý về số dư Credits Hugging Face:
+                </p>
+                <p className="text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
+                  Mô hình tạo hình ảnh/thiệp (FLUX.1-schnell qua Inference Providers) yêu cầu tài khoản Hugging Face của bạn phải có số dư tín dụng <b>Pre-paid Credits</b> hoặc gói PRO.
+                </p>
+                <div className="pt-1 flex flex-wrap items-center gap-2">
+                  <a
+                    href="https://huggingface.co/settings/billing"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-amber-100 hover:bg-amber-200 dark:bg-amber-900/60 dark:hover:bg-amber-800 text-amber-900 dark:text-amber-100 rounded-lg text-[11px] font-bold transition-colors"
+                  >
+                    <CreditCard size={12} />
+                    Kiểm tra / Nạp Credits tại đây
+                    <ExternalLink size={10} />
+                  </a>
+                  <a
+                    href="https://huggingface.co/settings/tokens"
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg text-[11px] font-medium transition-colors"
+                  >
+                    <ExternalLink size={11} />
+                    Quản lý Token (hf_...)
+                  </a>
+                </div>
+              </div>
+
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Hugging Face API Key (`hf_...`)</span>
+                  {localStorage.getItem('lovenote_huggingface_api_key') && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">● Đã lưu trong trình duyệt</span>
+                  )}
+                </label>
                 <input
                   type="password"
                   value={huggingKey}
                   onChange={(e) => setHuggingKey(e.target.value)}
                   placeholder="hf_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500"
+                  className="w-full px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs font-mono focus:outline-none focus:ring-2 focus:ring-rose-500 text-slate-800 dark:text-slate-100"
                 />
               </div>
 
-              <div className="pt-2 flex gap-3">
+              <div className="pt-2 flex flex-wrap gap-2.5">
                 <button
+                  type="button"
                   onClick={handleSaveHuggingKey}
-                  className="flex-1 py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-2"
+                  className="flex-1 min-w-[140px] py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-bold shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Key size={16} />
+                  <Key size={14} />
                   Lưu API Key
                 </button>
+                {localStorage.getItem('lovenote_huggingface_api_key') && (
+                  <button
+                    type="button"
+                    onClick={handleRemoveHuggingKey}
+                    className="py-2.5 px-3 bg-rose-100 hover:bg-rose-200 dark:bg-rose-950 dark:hover:bg-rose-900 text-rose-800 dark:text-rose-200 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer"
+                    title="Xóa Key đã lưu"
+                  >
+                    <Trash2 size={13} />
+                    Xóa Key
+                  </button>
+                )}
                 <a
                   href="https://huggingface.co/settings/tokens"
                   target="_blank"
                   rel="noreferrer"
-                  className="py-3 px-4 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
+                  className="py-2.5 px-3.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5"
                 >
-                  <ExternalLink size={14} />
-                  Lấy Key Hugging Face
+                  <ExternalLink size={13} />
+                  Lấy Key Mới
                 </a>
               </div>
             </div>

@@ -4,7 +4,7 @@
  */
 
 import React, { useState, useRef, useEffect, ComponentType, Suspense } from 'react';
-import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2, Folder, Share2, Scissors, Snowflake, Trash2, Search, SmilePlus, Grid, Magnet, Eye, EyeOff } from 'lucide-react';
+import { Heart, Flower, Leaf, Star, Smile, Gift, Sparkles, Cake, Users, Flower2, RotateCcw, Music, Type, Settings, PenTool, Check, Palette, Plus, Minus, VolumeX, Coffee, TreePine, Video, Loader2, Play, Download, AlertCircle, Film, Clock, Wand2, Folder, Share2, Scissors, Snowflake, Trash2, Search, SmilePlus, Grid, Magnet, Eye, EyeOff, CreditCard, ExternalLink, Key } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { prepareClonedDocForHtml2Canvas, captureElementToCanvas, applyResolvedColorsToClone, getIconSvgMarkup, getExportCanvas } from './modules/export/ExportHelper';
 import { triggerFileDownload, shareFile, toProxiedMediaUrl, isLikelyImageUrl, prefetchImageAsBase64 } from './modules/export/downloadUtils';
@@ -3964,31 +3964,99 @@ function AppContent() {
                       {videoGenResult.simulation ? (
                         <div className="w-full mb-6">
                           {videoGenResult.apiKeyConfigured ? (
-                            <div className="bg-rose-50 border border-rose-200 text-rose-950 rounded-2xl p-4 text-xs text-left flex items-start gap-3">
-                              <AlertCircle size={18} className="text-rose-600 shrink-0 mt-0.5 animate-bounce" />
-                              <div className="flex-1">
-                                <p className="font-bold text-rose-800 mb-1">Đã nhận mã API nhưng kết nối đến Agnes AI thất bại</p>
-                                <p className="text-rose-700 leading-relaxed mb-2">
-                                  Hệ thống đã nhận diện được mã API <b>AGNES_API_KEY</b> của bạn trong phần Cài đặt (Secrets), nhưng các cuộc gọi thử tới server của Agnes AI đã gặp sự cố.
-                                </p>
-                                {videoGenResult.warning && (
-                                  <div className="bg-white/80 p-2.5 rounded-lg border border-rose-100 font-mono text-[11px] text-rose-900 break-words leading-normal max-h-32 overflow-y-auto mb-2">
-                                    <strong className="text-rose-950 font-semibold">Chi tiết lỗi: </strong>
-                                    {videoGenResult.warning}
+                            (() => {
+                              const warningStr = videoGenResult.warning || '';
+                              const isHuggingCredits = warningStr.toLowerCase().includes('huggingface') || 
+                                                       warningStr.toLowerCase().includes('credits') ||
+                                                       warningStr.toLowerCase().includes('inference providers');
+                              const isHuggingFace = warningStr.toLowerCase().includes('huggingface');
+                              const providerName = isHuggingFace ? 'Hugging Face AI' : 
+                                                   warningStr.toLowerCase().includes('fal') ? 'Fal / Pika AI' :
+                                                   warningStr.toLowerCase().includes('runway') ? 'Runway AI' : 'Agnes AI';
+
+                              if (isHuggingCredits) {
+                                return (
+                                  <div className="bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-950 dark:text-amber-100 rounded-2xl p-4 text-xs text-left flex items-start gap-3 shadow-xs">
+                                    <AlertCircle size={20} className="text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+                                    <div className="flex-1 space-y-2.5">
+                                      <div>
+                                        <p className="font-bold text-amber-900 dark:text-amber-200 text-sm">
+                                          Tài khoản Hugging Face đã hết số dư Credits (Inference Providers)
+                                        </p>
+                                        <p className="text-amber-800 dark:text-amber-300 leading-relaxed mt-1">
+                                          Hệ thống đã nhận diện mã API Hugging Face của bạn. Tuy nhiên, Hugging Face yêu cầu tài khoản phải có số dư tín dụng trả trước (<b>Pre-paid Credits</b>) hoặc gói PRO để gọi mô hình tạo thiệp qua Inference Providers.
+                                        </p>
+                                      </div>
+
+                                      <div className="bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-xl border border-amber-200 dark:border-amber-800/60 font-mono text-[11px] text-slate-700 dark:text-slate-300 break-words leading-relaxed">
+                                        <strong className="text-amber-900 dark:text-amber-400 font-semibold">Chi tiết từ Hugging Face: </strong>
+                                        {warningStr}
+                                      </div>
+
+                                      <div className="bg-amber-100/70 dark:bg-amber-900/40 p-3 rounded-xl border border-amber-300/60 dark:border-amber-800/50 space-y-2">
+                                        <p className="font-bold text-amber-950 dark:text-amber-100 text-[11px] flex items-center gap-1">
+                                          👉 Hướng xử lý nhanh:
+                                        </p>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                          <a
+                                            href="https://huggingface.co/settings/billing"
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-bold text-xs transition-colors shadow-xs"
+                                          >
+                                            <CreditCard size={13} />
+                                            Nạp thêm Credits Hugging Face
+                                            <ExternalLink size={11} />
+                                          </a>
+                                          <button
+                                            type="button"
+                                            onClick={() => window.dispatchEvent(new CustomEvent('open-auth-modal', { detail: { tab: 'hugging' } }))}
+                                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 hover:bg-amber-50 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-300 dark:border-slate-700 rounded-xl font-bold text-xs transition-colors cursor-pointer shadow-2xs"
+                                          >
+                                            <Key size={13} className="text-amber-600" />
+                                            Đổi / Xóa API Key
+                                          </button>
+                                        </div>
+                                      </div>
+
+                                      <p className="text-[11px] text-slate-600 dark:text-slate-400 leading-relaxed">
+                                        ✨ <b>Bạn vẫn có thể xuất thiệp:</b> Hệ thống đã tự động dựng thiệp đồ họa sắc nét chất lượng cao với đầy đủ lời chúc, tiêu đề và nhạc nền ở khung trên. Bạn có thể bấm <b>&quot;Tải Thiệp Có Chữ&quot;</b> hoặc chia sẻ ngay lúc này.
+                                      </p>
+                                    </div>
                                   </div>
-                                )}
-                                <p className="text-[11px] text-rose-600 font-medium">
-                                  👉 <b>Hướng xử lý:</b> Hãy kiểm tra lại tính chính xác của mã khóa API của bạn trong menu Cài đặt (Secrets) ở góc trên bên phải. Đồng thời, đảm bảo tài khoản Agnes AI của bạn đang hoạt động bình thường và còn đủ lượt gọi.
-                                </p>
-                              </div>
-                            </div>
+                                );
+                              }
+
+                              return (
+                                <div className="bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800/60 text-rose-950 dark:text-rose-100 rounded-2xl p-4 text-xs text-left flex items-start gap-3">
+                                  <AlertCircle size={18} className="text-rose-600 dark:text-rose-400 shrink-0 mt-0.5" />
+                                  <div className="flex-1 space-y-2">
+                                    <p className="font-bold text-rose-800 dark:text-rose-200 text-sm">
+                                      Đã nhận mã API nhưng kết nối đến {providerName} gặp sự cố
+                                    </p>
+                                    <p className="text-rose-700 dark:text-rose-300 leading-relaxed">
+                                      Hệ thống đã nhận diện được mã API của bạn, nhưng quá trình kết nối tới máy chủ AI của {providerName} đã gặp phản hồi lỗi hoặc hết hạn mức.
+                                    </p>
+                                    {videoGenResult.warning && (
+                                      <div className="bg-white/80 dark:bg-slate-900/80 p-2.5 rounded-lg border border-rose-100 dark:border-rose-900 font-mono text-[11px] text-rose-900 dark:text-rose-200 break-words leading-normal max-h-32 overflow-y-auto">
+                                        <strong className="text-rose-950 dark:text-rose-300 font-semibold">Chi tiết lỗi: </strong>
+                                        {videoGenResult.warning}
+                                      </div>
+                                    )}
+                                    <p className="text-[11px] text-rose-600 dark:text-rose-400 font-medium">
+                                      👉 <b>Hướng xử lý:</b> Hãy kiểm tra lại tính chính xác và hạn mức sử dụng của mã khóa API trong menu Cài đặt (Secrets). Trong thời gian này, ứng dụng đã tự động kích hoạt khung thiệp chất lượng cao để bạn tải về.
+                                    </p>
+                                  </div>
+                                </div>
+                              );
+                            })()
                           ) : (
                             <div className="bg-amber-50 border border-amber-200 text-amber-950 rounded-2xl p-4 text-xs text-left flex items-start gap-3">
                               <AlertCircle size={18} className="text-amber-600 shrink-0 mt-0.5" />
                               <div className="flex-1">
                                 <p className="font-semibold mb-1">Chế độ Xem trước (Chưa có API Key)</p>
                                 <p className="text-amber-800 leading-relaxed mb-2">
-                                  Tính năng xuất video đã sẵn sàng! Để kết xuất video thật, hãy điền mã API của bạn với tên <b>AGNES_API_KEY</b> (và cấu hình thêm <b>AGNES_API_BASE</b> nếu cần) trong menu Cài đặt (Secrets) ở góc trên bên phải.
+                                  Tính năng xuất video đã sẵn sàng! Để kết xuất video thật, hãy điền mã API của bạn trong menu Cài đặt (Secrets) ở góc trên bên phải.
                                 </p>
                                 <div className="bg-white/60 p-2 rounded-lg font-mono text-[10px] text-amber-900 space-y-1">
                                   <div>• Tiêu đề: {videoGenResult.details?.title}</div>
@@ -4004,8 +4072,8 @@ function AppContent() {
                         <div className="bg-emerald-50 border border-emerald-200 text-emerald-950 rounded-2xl p-4 text-xs text-left mb-6 flex items-start gap-3">
                           <Check size={18} className="text-emerald-600 shrink-0 mt-0.5" />
                           <div className="flex-1">
-                            <p className="font-semibold text-emerald-800 mb-1">Đã kết xuất thành công qua Agnes AI!</p>
-                            <p className="text-emerald-700">Video của bạn đã được lưu và sẵn sàng tải về.</p>
+                            <p className="font-semibold text-emerald-800 mb-1">Đã kết xuất thành công qua AI!</p>
+                            <p className="text-emerald-700">Video thiệp của bạn đã được lưu và sẵn sàng tải về.</p>
                           </div>
                         </div>
                       )}
