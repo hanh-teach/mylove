@@ -505,9 +505,12 @@ CRITICAL RULES:
 async function startServer() {
   const distPath = path.join(process.cwd(), 'dist');
   const distIndexExists = fs.existsSync(path.join(distPath, 'index.html'));
-  const isProduction = process.env.NODE_ENV === 'production';
+  const isProduction = process.env.NODE_ENV === 'production' || distIndexExists;
 
-  if (isProduction && distIndexExists) {
+  if (distIndexExists) {
+    if (!process.env.NODE_ENV) {
+      process.env.NODE_ENV = 'production';
+    }
     app.use(express.static(distPath, {
       maxAge: '1d'
     }));

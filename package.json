@@ -13,6 +13,9 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test"
   },
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "dependencies": {
     "@fal-ai/client": "^1.10.1",
     "@google/genai": "^2.4.0",
@@ -23,17 +26,19 @@
     "@tailwindcss/vite": "^4.1.14",
     "@testing-library/jest-dom": "^7.0.0",
     "@testing-library/react": "^16.3.2",
-    "@tiptap/extension-placeholder": "^3.29.0",
-    "@tiptap/pm": "^3.29.0",
-    "@tiptap/react": "^3.29.0",
-    "@tiptap/starter-kit": "^3.29.0",
+    "@tiptap/core": "^3.32.0",
+    "@tiptap/extension-placeholder": "^3.32.0",
+    "@tiptap/extensions": "^3.32.0",
+    "@tiptap/pm": "^3.32.0",
+    "@tiptap/react": "^3.32.0",
+    "@tiptap/starter-kit": "^3.32.0",
     "@types/qrcode": "^1.5.6",
     "@vitejs/plugin-react": "^5.0.4",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "docx": "^9.7.1",
-    "dompurify": "^3.4.12",
+    "dompurify": "^3.4.17",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "express-rate-limit": "^8.6.1",
@@ -45,14 +50,14 @@
     "jspdf": "^4.2.1",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
-    "nodemailer": "^9.0.4",
+    "nodemailer": "^10.1.7",
     "proper-lockfile": "^4.1.2",
     "qrcode": "^1.5.4",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "reactflow": "^11.11.4",
     "vite": "^6.2.3",
-    "vitest": "^4.1.10",
+    "vitest": "^4.1.11",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
@@ -69,10 +74,24 @@
     "@types/supertest": "^7.2.1",
     "autoprefixer": "^10.4.21",
     "esbuild": "^0.25.0",
-    "sharp": "^0.35.3",
+    "sharp": "^0.35.5",
     "supertest": "^7.2.2",
     "tailwindcss": "^4.1.14",
     "tsx": "^4.21.0",
     "typescript": "~5.8.2"
+  },
+  "overrides": {
+    "proxy-addr": "^2.0.8",
+    "qs": "^6.16.1",
+    "nanoid": "^3.3.18",
+    "postcss": {
+      "nanoid": "^3.3.18"
+    },
+    "source-map-js": "^1.2.2",
+    "undici": "^7.30.0",
+    "ip-address": "^10.7.4",
+    "prosemirror-view": "^1.42.3",
+    "@vitest/mocker": "^4.1.11",
+    "vitest": "^4.1.11"
   }
 }
